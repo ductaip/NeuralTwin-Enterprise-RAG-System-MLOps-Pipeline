@@ -45,50 +45,50 @@ Unlike typical RAG tutorials that end with basic semantic search, NeuralTwin dem
 ```mermaid
 flowchart TB
     subgraph stage1["Stage 1: Hybrid Retrieval"]
-        query[User Query:<br/>'How to implement JWT auth?']
+        query["User Query: 'How to implement JWT auth?'"]
         
-        query_embed[Query Embedding<br/>1536-dim vector]
-        query_tokens[Query Tokens<br/>['jwt', 'auth', 'implement']]
+        query_embed["Query Embedding (1536-dim vector)"]
+        query_tokens["Query Tokens: jwt, auth, implement"]
         
         query --> query_embed & query_tokens
         
-        dense[Dense Search<br/>Cosine Similarity<br/>Top 50 results]
-        sparse[Sparse Search<br/>BM25 Algorithm<br/>Top 50 results]
+        dense["Dense Search (Cosine Similarity) - Top 50"]
+        sparse["Sparse Search (BM25) - Top 50"]
         
         query_embed --> dense
         query_tokens --> sparse
         
-        dense & sparse --> fusion[RRF Fusion<br/>Combine rankings]
+        dense & sparse --> fusion["RRF Fusion (Reciprocal Rank Fusion)"]
     end
     
     subgraph stage2["Stage 2: Reranking"]
-        fusion --> candidates[30 Candidates]
+        fusion --> candidates["30 Candidates"]
         
-        candidates --> crossenc[Cross-Encoder<br/>ms-marco-MiniLM]
+        candidates --> crossenc["Cross-Encoder (ms-marco-MiniLM)"]
         
-        crossenc --> scored[Relevance Scores<br/>0.0 - 1.0]
-        scored --> top5[Top 5 Contexts<br/>High precision]
+        crossenc --> scored["Relevance Scores (0.0 - 1.0)"]
+        scored --> top5["Top 5 Contexts (High precision)"]
     end
     
     subgraph stage3["Stage 3: Generation"]
-        top5 --> prompt[Prompt Template<br/>System + Context + Query]
+        top5 --> prompt["Prompt Template (System + Context + Query)"]
         
-        prompt --> llm[Llama 3.1 8B<br/>Instruct Mode]
+        prompt --> llm["Llama 3.1 8B (Instruct Mode)"]
         
-        llm --> stream[Token Streaming<br/>Server-Sent Events]
-        stream --> response[📝 Final Answer<br/>with Citations]
+        llm --> stream["Token Streaming (SSE)"]
+        stream --> response["📝 Final Answer with Citations"]
     end
     
     subgraph cache["⚡ Semantic Cache Layer"]
-        query -.check cache.-> cached{Cached?}
-        cached -.yes.-> response
-        cached -.no.-> query_embed
+        query -.-> cached{Cached?}
+        cached -- Yes --> response
+        cached -- No --> query_embed
     end
     
-    style stage1 fill:#e3f2fd
-    style stage2 fill:#f3e5f5
-    style stage3 fill:#e8f5e9
-    style cache fill:#fff3e0
+    style stage1 fill:#e3f2fd,stroke:#1565c0
+    style stage2 fill:#f3e5f5,stroke:#7b1fa2
+    style stage3 fill:#e8f5e9,stroke:#2e7d32
+    style cache fill:#fff3e0,stroke:#ef6c00
 ```
 
 **Performance Metrics:**
