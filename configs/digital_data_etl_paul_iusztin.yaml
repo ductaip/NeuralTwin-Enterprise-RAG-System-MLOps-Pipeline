@@ -1,0 +1,26 @@
+settings:
+  docker:
+    parent_image: 992382797823.dkr.ecr.eu-central-1.amazonaws.com/zenml-rlwlcs:latest
+    skip_build: True
+  orchestrator.sagemaker:
+    synchronous: false
+    
+parameters:
+  user_full_name: Phan Duc Tai
+  links:
+    # -----------------------------------------------------------------------
+    # USER LINKS (Add your specific articles or repositories here)
+    # -----------------------------------------------------------------------
+    # Note: For GitHub, please add specific REPOSITORY links (e.g., https://github.com/ductaip/my-repo)
+    # The crawler cannot clone a full profile directly.
+    # 
+    # For LinkedIn, the current crawler expects specific post/article links or a profile 
+    # (but profile crawling is experimental/deprecated due to styling changes).
+    # -----------------------------------------------------------------------
+    # Real GitHub Repositories for Phan Duc Tai
+    - https://github.com/ductaip/Notebook-Algorithm
+    - https://github.com/ductaip/NestJS-Ecommerce
+    - https://github.com/ductaip/Backend-Nestjs-ChatApp
+    
+    # Portfolio Articles (Examples - replace if you have specific ones)
+    - https://medium.com/decodingml/an-end-to-end-framework-for-production-ready-llm-systems-by-building-your-llm-twin-2cc6bb01141f
