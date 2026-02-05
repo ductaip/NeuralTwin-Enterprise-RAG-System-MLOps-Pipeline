@@ -10,13 +10,35 @@ concurrency:
     cancel-in-progress: true
 
 env:
-  AWS_ACCESS_KEY_ID: ${{ secrets.AWS_ACCESS_KEY_ID }}
+  # Dummy value to satisfy parser if needed, though mostly unused now
+  CI: true
 
 jobs:
+  check-aws-creds:
+    name: Check Permissions
+    runs-on: ubuntu-latest
+    outputs:
+      has_creds: ${{ steps.check.outputs.has_creds }}
+    steps:
+      - name: Check for AWS Secrets
+        id: check
+        shell: bash
+        env:
+          AWS_KEY: ${{ secrets.AWS_ACCESS_KEY_ID }}
+        run: |
+          if [ -n "$AWS_KEY" ]; then
+            echo "has_creds=true" >> $GITHUB_OUTPUT
+            echo "AWS Credentials found. Proceeding with deployment."
+          else
+            echo "has_creds=false" >> $GITHUB_OUTPUT
+            echo "No AWS Credentials found. Skipping deployment."
+          fi
+
   build:
+    needs: [check-aws-creds]
+    if: needs.check-aws-creds.outputs.has_creds == 'true'
     name: Build & Push Docker Image
     runs-on: ubuntu-latest
-    if: ${{ env.AWS_ACCESS_KEY_ID != '' }}
     steps:
       - name: Checkout Code
         uses: actions/checkout@v3
