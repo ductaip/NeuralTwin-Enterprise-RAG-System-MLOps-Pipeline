@@ -1,0 +1,75 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: rag-api
+  namespace: neural-twin
+  labels:
+    app: rag-api
+spec:
+  replicas: 2
+  selector:
+    matchLabels:
+      app: rag-api
+  template:
+    metadata:
+      labels:
+        app: rag-api
+    spec:
+      containers:
+        - name: api
+          image: neuraltwin/api:latest
+          ports:
+            - containerPort: 8000
+          envFrom:
+            - configMapRef:
+                name: app-config
+            - secretRef:
+                name: app-secrets
+          resources:
+            requests:
+              memory: "512Mi"
+              cpu: "500m"
+            limits:
+              memory: "1Gi"
+              cpu: "1000m"
+          readinessProbe:
+            httpGet:
+              path: /health
+              port: 8000
+            initialDelaySeconds: 5
+            periodSeconds: 10
+
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: kafka-consumer
+  namespace: neural-twin
+  labels:
+    app: kafka-consumer
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: kafka-consumer
+  template:
+    metadata:
+      labels:
+        app: kafka-consumer
+    spec:
+      containers:
+        - name: consumer
+          image: neuraltwin/consumer:latest
+          command: ["python", "-m", "llm_engineering.infrastructure.streaming.consumers.document_processor_consumer"]
+          envFrom:
+            - configMapRef:
+                name: app-config
+            - secretRef:
+                name: app-secrets
+          resources:
+            requests:
+              memory: "256Mi"
+              cpu: "250m"
+            limits:
+              memory: "512Mi"
+              cpu: "500m"
