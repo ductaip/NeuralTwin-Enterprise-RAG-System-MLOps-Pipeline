@@ -24,6 +24,7 @@ The NeuralTwin RAG system implements a **three-stage retrieval pipeline** to ach
 Stage 1: Hybrid Retrieval (Recall-focused)
   ├─ Dense Search (Semantic)      → Top 50 candidates
   ├─ Sparse Search (Keyword)      → Top 50 candidates
+  ├─ Graph Search (Structural)    → Top 50 candidates
   └─ RRF Fusion                   → Combined Top 30
 
 Stage 2: Reranking (Precision-focused)
