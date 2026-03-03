@@ -49,6 +49,12 @@ class Settings(BaseSettings):
     AWS_SECRET_KEY: str | None = None
     AWS_ARN_ROLE: str | None = None
 
+    # vLLM Configuration
+    USE_VLLM: bool = False
+    VLLM_BASE_URL: str = "http://localhost:8000/v1"
+    VLLM_MODEL_ID: str = "facebook/opt-125m"
+    VLLM_API_KEY: str = "EMPTY"  # vLLM usually requires a dummy key
+
     # --- Optional settings used to tweak the code. ---
 
     # AWS SageMaker
