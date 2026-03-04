@@ -1,0 +1,23 @@
+global:
+  scrape_interval: 15s
+  evaluation_interval: 15s
+
+scrape_configs:
+  - job_name: "prometheus"
+    static_configs:
+      - targets: ["localhost:9090"]
+
+  - job_name: "node-exporter"
+    static_configs:
+      - targets: ["node-exporter:9100"]
+
+  # We will instrument the FastAPI app to expose metrics on port 8000
+  # Note: The host 'host.docker.internal' is used to reach the host machine from containers on Mac/Windows
+  # On Linux, we might need '172.17.0.1' or network_mode: "host"
+  # Since we are using a 'local' bridge network, we can use the service name if the app is containerized.
+  # However, the user runs the app via 'poetry run uvicorn', so it's on the host network.
+  # We will assume for Docker that we can reach it via host gateway.
+  - job_name: "fastapi-app"
+    metrics_path: "/metrics"
+    static_configs:
+      - targets: ["host.docker.internal:8000"]
