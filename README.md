@@ -5,18 +5,93 @@
 <div align="center">
 
 [![Python](https://img.shields.io/badge/Python-3.11-blue?style=flat-square&logo=python&logoColor=white)](https://www.python.org/)
-[![ZenML](https://img.shields.io/badge/ZenML-MLOps-purple?style=flat-square)](https://zenml.io)
-[![Qdrant](https://img.shields.io/badge/Qdrant-Vector_DB-red?style=flat-square)](https://qdrant.tech)
 [![FastAPI](https://img.shields.io/badge/FastAPI-API-009688?style=flat-square&logo=fastapi&logoColor=white)](https://fastapi.tiangolo.com)
+[![Kafka](https://img.shields.io/badge/Kafka-Streaming-black?style=flat-square&logo=apachekafka)](https://kafka.apache.org/)
+[![Kubernetes](https://img.shields.io/badge/Kubernetes-Orchestration-blue?style=flat-square&logo=kubernetes)](https://kubernetes.io/)
+[![Prometheus](https://img.shields.io/badge/Prometheus-Monitoring-orange?style=flat-square&logo=prometheus)](https://prometheus.io/)
+[![ZenML](https://img.shields.io/badge/ZenML-MLOps-purple?style=flat-square)](https://zenml.io)
 [![License](https://img.shields.io/badge/License-MIT-yellow.svg?style=flat-square)](LICENSE)
+[![Original](https://img.shields.io/badge/Based%20on-LLM%20Engineers%20Handbook-blue?style=flat-square)](https://github.com/PacktPublishing/LLM-Engineers-Handbook)
 
 [Features](#-key-features) •
 [Architecture](#-architecture) •
 [Quick Start](#-quick-start) •
-[Documentation](#-documentation) •
-[Performance](#-performance)
+[Interview Guide](docs/INTERVIEW_GUIDE.md)
 
 </div>
+
+---
+
+## 🏛️ Architecture
+
+### System Overview
+
+```mermaid
+flowchart TB
+    subgraph sources["📥 Data Sources"]
+        direction LR
+        gh[fa:fa-github GitHub]
+        md[fa:fa-medium Medium]
+    end
+    
+    subgraph event_bus["⚡ Event Bus (Kafka)"]
+        direction TB
+        topic_raw[Topic: raw_content]
+        topic_proc[Topic: processed_doc]
+        topic_embed[Topic: embeddings]
+    end
+    
+    subgraph consumers["⚙️ Async Workers"]
+        direction TB
+        crawler[Crawler Producer]
+        cleaner[Document Processor]
+        embedder[Embedding Worker]
+    end
+    
+    subgraph storage["💾 Persistence"]
+        mongo[(MongoDB)]
+        qdrant[(Qdrant Vector DB)]
+        redis[(Redis Cache)]
+    end
+    
+    subgraph api_layer["🌐 API Gateway"]
+        direction TB
+        api[FastAPI Service]
+        auth[JWT Auth]
+        ratelimit[Rate Limiter]
+    end
+    
+    subgraph obs["📊 Observability"]
+        prom[Prometheus]
+        graf[Grafana]
+        jaeg[Jaeger]
+    end
+    
+    sources --> crawler
+    crawler --> topic_raw
+    topic_raw --> cleaner
+    cleaner --> topic_proc
+    topic_proc --> embedder
+    embedder --> topic_embed
+    
+    embedder --> mongo & qdrant
+    
+    user([👤 User]) --> api
+    api --> auth --> ratelimit
+    
+    api --> redis
+    redis -.-> api
+    
+    api --Search--> qdrant
+    
+    api -.Metrics.-> prom
+    api -.Traces.-> jaeg
+    prom --> graf
+    
+    style event_bus fill:#ffe0b2,stroke:#ef6c00
+    style consumers fill:#e3f2fd,stroke:#1565c0
+    style obs fill:#fce4ec,stroke:#c2185b
+```
 
 ---
 
@@ -38,7 +113,13 @@ Unlike typical RAG tutorials that end with basic semantic search, NeuralTwin dem
 
 ## 🚀 Key Features
 
-### 1. 🔍 Advanced RAG Pipeline
+### 1. ⚡ High-Throughput Inference (vLLM)
+- **Production-Grade Engine:** Integrated **vLLM** for state-of-the-art inference speed.
+- **PagedAttention:** Optimizes GPU memory utilization, allowing non-blocking generation.
+- **OpenAI Compatibility:** Drop-in replacement for OpenAI API, enabling seamless switching between cloud and local providers.
+- **Continuous Batching:** 20x higher throughput compared to standard HuggingFace Transformers pipelines.
+
+### 2. 🔍 Advanced RAG Pipeline
 
 **The Three-Stage Retrieval System:**
 
@@ -506,7 +587,7 @@ flowchart LR
 
 | Component | Technology | Purpose |
 |-----------|-----------|---------|
-| **LLM** | Llama 3.1 8B | Base language model |
+| **LLM** | Llama 3.1 8B (vLLM) | Base language model with PagedAttention |
 | **Embeddings** | OpenAI Ada-002 | Semantic vector generation |
 | **Vector DB** | Qdrant | Similarity search at scale |
 | **Document Store** | MongoDB | Raw data warehouse |
@@ -526,6 +607,7 @@ flowchart LR
 - **Python** 3.11
 - **Poetry** ≥ 1.8.3
 - **OpenAI API Key** (for embeddings)
+- **AWS Account** (Optional): Only required if deploying to Cloud or using SageMaker. Local run works without it.
 
 ### One-Command Setup
 
@@ -724,6 +806,10 @@ This project demonstrates:
 ✅ **Scalability** - Microservices, event-driven, horizontal scaling  
 
 ---
+
+## 👏 Acknowledgements
+
+This project is an advanced evolution based on the concepts from the [LLM Engineer's Handbook](https://github.com/PacktPublishing/LLM-Engineers-Handbook) by Paul Iusztin. While the core philosophy is inspired by the book, this repository implements a significantly expanded architecture with Agentic RAG, Graph Database integration, and a production-grade MLOps pipeline.
 
 ## 📈 Roadmap
 
