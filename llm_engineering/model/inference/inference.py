@@ -39,11 +39,8 @@ class LLMInferenceSagemakerEndpoint(Inference):
     def _default_payload(self) -> Dict[str, Any]:
         """
         Generates the default payload for the inference request.
-
-        Returns:
-            dict: The default payload.
+        Supports standard Text Generation Inference (TGI) and vLLM containers on SageMaker.
         """
-
         return {
             "inputs": "How is the weather?",
             "parameters": {
@@ -54,18 +51,34 @@ class LLMInferenceSagemakerEndpoint(Inference):
             },
         }
 
-    def set_payload(self, inputs: str, parameters: Optional[Dict[str, Any]] = None) -> None:
+    def set_payload(self, inputs: str, parameters: Optional[Dict[str, Any]] = None, is_vllm: bool = False) -> None:
         """
         Sets the payload for the inference request.
 
         Args:
             inputs (str): The input text for the inference.
             parameters (dict, optional): Additional parameters for the inference. Defaults to None.
+            is_vllm (bool): Flag to format payload specifically for vLLM/DJL containers.
         """
+        if is_vllm:
+            # vLLM on SageMaker usually accepts a list of inputs or a strictly formatted OpenAI-style request
+            # For DJL/vLLM, standard format is often similar or specifically structured
+            self.payload_vllm_format(inputs, parameters)
+        else:
+            self.payload["inputs"] = inputs
+            if parameters:
+                 self.payload["parameters"].update(parameters)
 
-        self.payload["inputs"] = inputs
-        if parameters:
-            self.payload["parameters"].update(parameters)
+    def payload_vllm_format(self, inputs: str, parameters: Optional[Dict[str, Any]] = None) -> None:
+        """ Formats payload for SageMaker vLLM container. """
+        self.payload = {
+            "inputs": inputs,
+            "parameters": {
+                "max_tokens": parameters.get("max_new_tokens", settings.MAX_NEW_TOKENS_INFERENCE) if parameters else settings.MAX_NEW_TOKENS_INFERENCE,
+                "temperature": parameters.get("temperature", settings.TEMPERATURE_INFERENCE) if parameters else settings.TEMPERATURE_INFERENCE,
+                "top_p": parameters.get("top_p", settings.TOP_P_INFERENCE) if parameters else settings.TOP_P_INFERENCE,
+            }
+        }
 
     def inference(self) -> Dict[str, Any]:
         """
