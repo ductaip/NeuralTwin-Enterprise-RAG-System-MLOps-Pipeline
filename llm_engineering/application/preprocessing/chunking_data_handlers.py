@@ -23,6 +23,10 @@ class ChunkingDataHandler(ABC, Generic[CleanedDocumentT, ChunkT]):
     All data transformations logic for the chunking step is done here
     """
 
+    # Maximum characters of parent content to store alongside each child chunk.
+    # This enables Small-to-Big retrieval without a secondary DB lookup.
+    MAX_PARENT_CONTENT_LENGTH: int = 4000
+
     @property
     def metadata(self) -> dict:
         return {
@@ -47,12 +51,15 @@ class PostChunkingHandler(ChunkingDataHandler):
         data_models_list = []
 
         cleaned_content = data_model.content
+        # Hierarchical Retrieval: store truncated parent content for Small-to-Big expansion
+        parent_content = cleaned_content[:self.MAX_PARENT_CONTENT_LENGTH]
         chunks = chunk_text(
             cleaned_content, chunk_size=self.metadata["chunk_size"], chunk_overlap=self.metadata["chunk_overlap"]
         )
 
         for chunk in chunks:
             chunk_id = hashlib.md5(chunk.encode()).hexdigest()
+            chunk_metadata = {**self.metadata, "parent_content": parent_content}
             model = PostChunk(
                 id=UUID(chunk_id, version=4),
                 content=chunk,
@@ -61,7 +68,7 @@ class PostChunkingHandler(ChunkingDataHandler):
                 author_id=data_model.author_id,
                 author_full_name=data_model.author_full_name,
                 image=data_model.image if data_model.image else None,
-                metadata=self.metadata,
+                metadata=chunk_metadata,
             )
             data_models_list.append(model)
 
@@ -80,12 +87,15 @@ class ArticleChunkingHandler(ChunkingDataHandler):
         data_models_list = []
 
         cleaned_content = data_model.content
+        # Hierarchical Retrieval: store truncated parent content for Small-to-Big expansion
+        parent_content = cleaned_content[:self.MAX_PARENT_CONTENT_LENGTH]
         chunks = chunk_article(
             cleaned_content, min_length=self.metadata["min_length"], max_length=self.metadata["max_length"]
         )
 
         for chunk in chunks:
             chunk_id = hashlib.md5(chunk.encode()).hexdigest()
+            chunk_metadata = {**self.metadata, "parent_content": parent_content}
             model = ArticleChunk(
                 id=UUID(chunk_id, version=4),
                 content=chunk,
@@ -94,7 +104,7 @@ class ArticleChunkingHandler(ChunkingDataHandler):
                 document_id=data_model.id,
                 author_id=data_model.author_id,
                 author_full_name=data_model.author_full_name,
-                metadata=self.metadata,
+                metadata=chunk_metadata,
             )
             data_models_list.append(model)
 
@@ -113,12 +123,15 @@ class RepositoryChunkingHandler(ChunkingDataHandler):
         data_models_list = []
 
         cleaned_content = data_model.content
+        # Hierarchical Retrieval: store truncated parent content for Small-to-Big expansion
+        parent_content = cleaned_content[:self.MAX_PARENT_CONTENT_LENGTH]
         chunks = chunk_text(
             cleaned_content, chunk_size=self.metadata["chunk_size"], chunk_overlap=self.metadata["chunk_overlap"]
         )
 
         for chunk in chunks:
             chunk_id = hashlib.md5(chunk.encode()).hexdigest()
+            chunk_metadata = {**self.metadata, "parent_content": parent_content}
             model = RepositoryChunk(
                 id=UUID(chunk_id, version=4),
                 content=chunk,
@@ -128,7 +141,7 @@ class RepositoryChunkingHandler(ChunkingDataHandler):
                 document_id=data_model.id,
                 author_id=data_model.author_id,
                 author_full_name=data_model.author_full_name,
-                metadata=self.metadata,
+                metadata=chunk_metadata,
             )
             data_models_list.append(model)
 
