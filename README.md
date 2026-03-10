@@ -119,7 +119,12 @@ Unlike typical RAG tutorials that end with basic semantic search, NeuralTwin dem
 - **OpenAI Compatibility:** Drop-in replacement for OpenAI API, enabling seamless switching between cloud and local providers.
 - **Continuous Batching:** 20x higher throughput compared to standard HuggingFace Transformers pipelines.
 
-### 2. 🔍 Advanced RAG Pipeline
+### 2. 🏛️ Hierarchical Retrieval (Small-to-Big)
+- **Context Expansion:** Small child chunks are used for precise vector search, then expanded to their full parent documents before LLM generation.
+- **Zero-Latency:** Parent content is pre-stored during ETL—no secondary DB lookups needed at query time.
+- **Smart Deduplication:** Multiple child chunks from the same parent are automatically deduplicated in the context window.
+
+### 3. 🔍 Advanced RAG Pipeline
 
 **The Three-Stage Retrieval System:**
 
