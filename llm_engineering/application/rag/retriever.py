@@ -74,7 +74,28 @@ class ContextRetriever:
         else:
             k_documents = []
 
+        # Hierarchical Retrieval: Small-to-Big Context Expansion
+        # After reranking with child chunks (precise), expand to parent documents (context-rich)
+        k_documents = self._expand_to_parent_context(k_documents)
+
         return k_documents
+
+    def _expand_to_parent_context(self, chunks: list[EmbeddedChunk]) -> list[EmbeddedChunk]:
+        """
+        Hierarchical Retrieval (Small-to-Big):
+        Extracts parent_content from chunk metadata and injects it into the chunk object.
+        This allows to_context() to use the full parent document instead of small chunks.
+        """
+        for chunk in chunks:
+            if hasattr(chunk, "metadata") and isinstance(chunk.metadata, dict):
+                parent_content = chunk.metadata.get("parent_content")
+                if parent_content:
+                    chunk.parent_content = parent_content
+
+        logger.info(
+            f"Hierarchical Retrieval: expanded {sum(1 for c in chunks if c.parent_content)} / {len(chunks)} chunks to parent context."
+        )
+        return chunks
 
     def _reciprocal_rank_fusion(self, dense_results: list[EmbeddedChunk], sparse_results: list[EmbeddedChunk], k: int = 60) -> list[EmbeddedChunk]:
         """
