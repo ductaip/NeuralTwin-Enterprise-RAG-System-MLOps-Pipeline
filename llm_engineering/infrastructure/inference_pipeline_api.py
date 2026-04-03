@@ -25,6 +25,11 @@ configure_opik()
 
 app = FastAPI()
 
+# Register the AI Facade router (reasoning-breakdown, etc.)
+from llm_engineering.infrastructure.api.facade_controller import router as ai_router  # noqa: E402
+
+app.include_router(ai_router)
+
 
 class QueryRequest(BaseModel):
     query: str = Field(..., min_length=1, max_length=1000, description="The user query.")
