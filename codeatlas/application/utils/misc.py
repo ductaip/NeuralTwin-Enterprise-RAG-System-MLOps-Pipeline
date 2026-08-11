@@ -1,7 +1,5 @@
 from typing import Generator
 
-from transformers import AutoTokenizer
-
 from codeatlas.settings import settings
 
 
@@ -16,6 +14,8 @@ def batch(list_: list, size: int) -> Generator[list, None, None]:
 
 
 def compute_num_tokens(text: str) -> int:
+    from transformers import AutoTokenizer
+
     tokenizer = AutoTokenizer.from_pretrained(settings.HF_MODEL_ID)
 
     return len(tokenizer.encode(text, add_special_tokens=False))

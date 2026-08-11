@@ -15,7 +15,6 @@ from codeatlas.application.rag.retriever import ContextRetriever
 from codeatlas.application.utils import misc
 from codeatlas.domain.embedded_chunks import EmbeddedChunk
 from codeatlas.infrastructure.opik_utils import configure_opik
-from codeatlas.model.inference import InferenceExecutor, LLMInferenceSagemakerEndpoint
 from codeatlas.infrastructure.security.jwt import verify_token
 from codeatlas.infrastructure.security.rate_limiter import rate_limit_dependency
 from codeatlas.infrastructure.monitoring.decorators import track_request_metrics
@@ -69,12 +68,13 @@ def call_llm_service(query: str, context: str | None) -> str:
         ]
         return llm.invoke(messages).content
 
-    llm = LLMInferenceSagemakerEndpoint(
-        endpoint_name=settings.SAGEMAKER_ENDPOINT_INFERENCE, inference_component_name=None
+    # SageMaker inference (codeatlas.model.inference) was removed in
+    # Phase 0.5 along with the rest of the finetuning/SageMaker subsystem.
+    # Replaced by GroqProvider / ModalVLLMProvider in Phase 2.
+    raise NotImplementedError(
+        "No LLM backend configured (mock/Ollama only for now). "
+        "SageMaker fallback removed; Groq/vLLM providers land in Phase 2."
     )
-    answer = InferenceExecutor(llm, query, context).execute()
-
-    return answer
 
 async def stream_rag(query: str) -> AsyncGenerator[str, None]:
     """

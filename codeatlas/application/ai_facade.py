@@ -25,7 +25,6 @@ import asyncio
 import json
 import re
 import time
-from typing import TYPE_CHECKING
 
 from loguru import logger
 
@@ -35,9 +34,6 @@ from codeatlas.domain.inference import (
     ReasoningStepType,
 )
 from codeatlas.settings import settings
-
-if TYPE_CHECKING:
-    from codeatlas.application.agents.research_agent import AgentResult
 
 
 # ---------------------------------------------------------------------------
@@ -113,24 +109,18 @@ class CodeAtlasFacade:
     #  Public API – existing services (thin delegation)
     # ------------------------------------------------------------------ #
 
-    async def run_research_agent(self, query: str) -> "AgentResult":
+    async def run_research_agent(self, query: str) -> None:
         """
         Execute the ReAct research agent and return the structured result.
 
-        Parameters
-        ----------
-        query:
-            Free-form natural-language research question.
-
-        Returns
-        -------
-        AgentResult
-            Contains the final answer and the full thought-chain.
+        Not implemented yet — ``codeatlas.application.agents`` was removed in
+        Phase 0.5 (it held only mock logic). Rebuilt in Phase 3 (LangGraph
+        mode QA) per CodeAtlas spec §2.4.
         """
-        from codeatlas.application.agents.research_agent import ResearchAgent
-
-        agent = ResearchAgent(use_mock_llm=self._mock)
-        return await asyncio.to_thread(agent.solve, query)
+        raise NotImplementedError(
+            "run_research_agent has no agent to delegate to yet. "
+            "Implemented in CodeAtlas roadmap Phase 3 (LangGraph mode QA)."
+        )
 
     async def rag_query(self, query: str, top_k: int = 3) -> str:
         """
@@ -414,13 +404,10 @@ class CodeAtlasFacade:
             ]
             return llm.invoke(messages).content
 
-        from codeatlas.model.inference import (
-            InferenceExecutor,
-            LLMInferenceSagemakerEndpoint,
+        # SageMaker inference (codeatlas.model.inference) was removed in
+        # Phase 0.5 along with the rest of the finetuning/SageMaker
+        # subsystem. Replaced by GroqProvider / ModalVLLMProvider in Phase 2.
+        raise NotImplementedError(
+            "No LLM backend configured (mock/Ollama only for now). "
+            "SageMaker fallback removed; Groq/vLLM providers land in Phase 2."
         )
-
-        llm = LLMInferenceSagemakerEndpoint(
-            endpoint_name=settings.SAGEMAKER_ENDPOINT_INFERENCE,
-            inference_component_name=None,
-        )
-        return InferenceExecutor(llm, query, context).execute()
