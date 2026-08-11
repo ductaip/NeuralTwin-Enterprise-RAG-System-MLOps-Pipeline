@@ -100,6 +100,14 @@ sequenceDiagram
     API->>User: Return job_id
 ```
 
+### 4. API Facade Pattern
+
+The **Facade Pattern** (`NeuralTwinAIFacade`) acts as a unified interface between our REST API and the complex underlying ML application layer.
+
+- **Purpose:** Hides the complexity of multiple RAG and reasoning services from the transport layer. Provide a stable contract for the FastAPI routers.
+- **Loose Coupling:** The FastAPI controller (`facade_controller.py`) imports only the Facade and standard data models. It has zero knowledge of Qdrant, LangChain, or vLLM.
+- **Lazy Initialization:** The Facade delays the instantiation of heavy machine learning components until they are actually needed, preventing long import times during server start-up.
+
 ---
 
 ## Core Components
