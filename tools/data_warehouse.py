@@ -4,8 +4,8 @@ from pathlib import Path
 import click
 from loguru import logger
 
-from llm_engineering.domain.base.nosql import NoSQLBaseDocument
-from llm_engineering.domain.documents import ArticleDocument, PostDocument, RepositoryDocument, UserDocument
+from codeatlas.domain.base.nosql import NoSQLBaseDocument
+from codeatlas.domain.documents import ArticleDocument, PostDocument, RepositoryDocument, UserDocument
 
 
 @click.command()

@@ -1,5 +1,5 @@
 import pytest
-from llm_engineering.application.preprocessing.operations.cleaning import clean_text
+from codeatlas.application.preprocessing.operations.cleaning import clean_text
 
 def test_clean_text_basic():
     """Test basic text cleaning without special characters."""

@@ -2,7 +2,7 @@ apiVersion: apps/v1
 kind: Deployment
 metadata:
   name: rag-api
-  namespace: neural-twin
+  namespace: codeatlas
   labels:
     app: rag-api
 spec:
@@ -17,7 +17,7 @@ spec:
     spec:
       containers:
         - name: api
-          image: neuraltwin/api:latest
+          image: codeatlas/api:latest
           ports:
             - containerPort: 8000
           envFrom:
@@ -44,7 +44,7 @@ apiVersion: apps/v1
 kind: Deployment
 metadata:
   name: kafka-consumer
-  namespace: neural-twin
+  namespace: codeatlas
   labels:
     app: kafka-consumer
 spec:
@@ -59,8 +59,8 @@ spec:
     spec:
       containers:
         - name: consumer
-          image: neuraltwin/consumer:latest
-          command: ["python", "-m", "llm_engineering.infrastructure.streaming.consumers.document_processor_consumer"]
+          image: codeatlas/consumer:latest
+          command: ["python", "-m", "codeatlas.infrastructure.streaming.consumers.document_processor_consumer"]
           envFrom:
             - configMapRef:
                 name: app-config

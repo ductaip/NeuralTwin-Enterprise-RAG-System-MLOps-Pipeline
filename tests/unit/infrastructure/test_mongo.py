@@ -3,8 +3,8 @@ from unittest.mock import MagicMock, patch
 import pytest
 from pymongo.errors import ConnectionFailure
 
-from llm_engineering.domain.base.patterns import SingletonMeta
-from llm_engineering.infrastructure.db.mongo import MongoDatabaseConnector
+from codeatlas.domain.base.patterns import SingletonMeta
+from codeatlas.infrastructure.db.mongo import MongoDatabaseConnector
 
 
 @pytest.fixture(autouse=True)
@@ -16,14 +16,14 @@ def reset_singleton():
 
 @pytest.fixture
 def mock_settings():
-    with patch("llm_engineering.infrastructure.db.mongo.settings") as mock:
+    with patch("codeatlas.infrastructure.db.mongo.settings") as mock:
         mock.DATABASE_HOST = "mongodb://localhost:27017"
         yield mock
 
 
 @pytest.fixture
 def mock_mongo_client():
-    with patch("llm_engineering.infrastructure.db.mongo.MongoClient") as mock:
+    with patch("codeatlas.infrastructure.db.mongo.MongoClient") as mock:
         yield mock
 
 

@@ -1,10 +1,10 @@
 from typing_extensions import Annotated
 from zenml import get_step_context, step
 
-from llm_engineering.application import utils
-from llm_engineering.application.preprocessing import ChunkingDispatcher, EmbeddingDispatcher
-from llm_engineering.domain.chunks import Chunk
-from llm_engineering.domain.embedded_chunks import EmbeddedChunk
+from codeatlas.application import utils
+from codeatlas.application.preprocessing import ChunkingDispatcher, EmbeddingDispatcher
+from codeatlas.domain.chunks import Chunk
+from codeatlas.domain.embedded_chunks import EmbeddedChunk
 
 
 @step

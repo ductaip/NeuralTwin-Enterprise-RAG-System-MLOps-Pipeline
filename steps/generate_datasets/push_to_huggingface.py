@@ -2,8 +2,8 @@ from loguru import logger
 from typing_extensions import Annotated
 from zenml import step
 
-from llm_engineering.domain.dataset import InstructTrainTestSplit, PreferenceTrainTestSplit
-from llm_engineering.settings import settings
+from codeatlas.domain.dataset import InstructTrainTestSplit, PreferenceTrainTestSplit
+from codeatlas.settings import settings
 
 
 @step

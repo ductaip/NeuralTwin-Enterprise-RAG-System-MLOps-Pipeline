@@ -1,5 +1,5 @@
 from loguru import logger
-from llm_engineering.application.graph.ingestor import GraphIngestor
+from codeatlas.application.graph.ingestor import GraphIngestor
 
 def main():
     logger.info("Starting Graph Ingestion from Mock Data...")

@@ -4,9 +4,9 @@ from loguru import logger
 from typing_extensions import Annotated
 from zenml import get_step_context, step
 
-from llm_engineering.application import utils
-from llm_engineering.domain.base.nosql import NoSQLBaseDocument
-from llm_engineering.domain.documents import ArticleDocument, Document, PostDocument, RepositoryDocument, UserDocument
+from codeatlas.application import utils
+from codeatlas.domain.base.nosql import NoSQLBaseDocument
+from codeatlas.domain.documents import ArticleDocument, Document, PostDocument, RepositoryDocument, UserDocument
 
 
 @step

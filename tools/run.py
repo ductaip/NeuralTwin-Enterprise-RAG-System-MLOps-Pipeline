@@ -4,7 +4,7 @@ from pathlib import Path
 import click
 from loguru import logger
 
-from llm_engineering import settings
+from codeatlas import settings
 from pipelines import (
     digital_data_etl,
     end_to_end_data,

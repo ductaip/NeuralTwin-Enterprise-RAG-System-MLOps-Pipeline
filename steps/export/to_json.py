@@ -3,7 +3,7 @@ from pathlib import Path
 from typing_extensions import Annotated
 from zenml import step
 
-from llm_engineering.infrastructure.files_io import JsonFileManager
+from codeatlas.infrastructure.files_io import JsonFileManager
 
 
 @step

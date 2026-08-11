@@ -3,10 +3,10 @@ from typing import Any
 from typing_extensions import Annotated
 from zenml import ArtifactConfig, get_step_context, step
 
-from llm_engineering.application.dataset import generation
-from llm_engineering.domain.dataset import DatasetType, InstructTrainTestSplit
-from llm_engineering.domain.prompt import GenerateDatasetSamplesPrompt
-from llm_engineering.domain.types import DataCategory
+from codeatlas.application.dataset import generation
+from codeatlas.domain.dataset import DatasetType, InstructTrainTestSplit
+from codeatlas.domain.prompt import GenerateDatasetSamplesPrompt
+from codeatlas.domain.types import DataCategory
 
 
 @step

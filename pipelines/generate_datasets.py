@@ -1,6 +1,6 @@
 from zenml import pipeline
 
-from llm_engineering.domain.dataset import DatasetType
+from codeatlas.domain.dataset import DatasetType
 from steps import generate_datasets as cd_steps
 
 

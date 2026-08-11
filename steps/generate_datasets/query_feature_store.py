@@ -5,8 +5,8 @@ from qdrant_client.http import exceptions
 from typing_extensions import Annotated
 from zenml import step
 
-from llm_engineering.domain.base.nosql import NoSQLBaseDocument
-from llm_engineering.domain.cleaned_documents import (
+from codeatlas.domain.base.nosql import NoSQLBaseDocument
+from codeatlas.domain.cleaned_documents import (
     CleanedArticleDocument,
     CleanedDocument,
     CleanedPostDocument,

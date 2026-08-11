@@ -10,7 +10,7 @@ mock_zenml = MagicMock()
 mock_zenml.client.Client.return_value.get_secret.side_effect = Exception("Mocked connection failure")
 sys.modules["zenml.client"] = mock_zenml
 
-from llm_engineering.application.agents.research_agent import ResearchAgent
+from codeatlas.application.agents.research_agent import ResearchAgent
 
 console = Console()
 

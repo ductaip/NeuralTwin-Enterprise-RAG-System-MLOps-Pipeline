@@ -1,10 +1,10 @@
 from typing_extensions import Annotated
 from zenml import get_step_context, step
 
-from llm_engineering.application.dataset import generation
-from llm_engineering.domain.dataset import DatasetType
-from llm_engineering.domain.prompt import GenerateDatasetSamplesPrompt
-from llm_engineering.domain.types import DataCategory
+from codeatlas.application.dataset import generation
+from codeatlas.domain.dataset import DatasetType
+from codeatlas.domain.prompt import GenerateDatasetSamplesPrompt
+from codeatlas.domain.types import DataCategory
 
 
 @step
