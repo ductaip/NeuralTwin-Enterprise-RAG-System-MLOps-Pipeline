@@ -1,6 +1,6 @@
 
 # ==============================================================================
-#  LLM Twin - Portfolio Edition | Makefile
+#  CodeAtlas | Makefile
 # ==============================================================================
 
 # Ensure poetry is in PATH
@@ -68,15 +68,15 @@ start-streaming: ## Start Kafka and Streaming Consumers
 	@echo "⏳ Waiting for Kafka to be ready..."
 	@sleep 10
 	@echo "🚀 Starting Consumers..."
-	@poetry run python -m llm_engineering.infrastructure.streaming.consumers.document_processor_consumer &
-	@poetry run python -m llm_engineering.infrastructure.streaming.consumers.embedding_consumer &
+	@poetry run python -m codeatlas.infrastructure.streaming.consumers.document_processor_consumer &
+	@poetry run python -m codeatlas.infrastructure.streaming.consumers.embedding_consumer &
 
 run-agent-demo: ## Run the Agentic RAG Demo
 	@echo "🤖 Running Research Agent Demo..."
 	@poetry run python tools/agent_demo.py
 
 kafka-topics: ## List active Kafka topics
-	@docker exec llm_engineering_kafka kafka-topics --list --bootstrap-server localhost:9092
+	@docker exec codeatlas_kafka kafka-topics --list --bootstrap-server localhost:9092
 
 graph-ingest: ## Ingest mock data into Neo4j
 	@echo "🕸️ Ingesting Graph Data..."

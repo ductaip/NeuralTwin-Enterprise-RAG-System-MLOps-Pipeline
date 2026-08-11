@@ -1,4 +1,4 @@
-from llm_engineering.domain.documents import ArticleDocument, UserDocument
+from codeatlas.domain.documents import ArticleDocument, UserDocument
 
 if __name__ == "__main__":
     user = UserDocument.get_or_create(first_name="Paul", last_name="Iusztin")

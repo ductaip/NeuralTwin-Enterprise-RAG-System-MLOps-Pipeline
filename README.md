@@ -1,4 +1,4 @@
-# 🧠 NeuralTwin: Production-Grade LLM Twin with Advanced RAG
+# 🧠 CodeAtlas: Production-Grade LLM Twin with Advanced RAG
 
 > **End-to-end AI system demonstrating production MLOps, advanced RAG techniques, and efficient LLM fine-tuning.**
 
@@ -97,11 +97,11 @@ flowchart TB
 
 ## 📖 Overview
 
-**NeuralTwin** is a production-ready AI system that creates a digital knowledge twin from your technical content (GitHub repositories, Medium articles, LinkedIn posts). It leverages state-of-the-art RAG (Retrieval-Augmented Generation) techniques to answer questions using your specific knowledge base, preventing hallucinations and ensuring accurate responses.
+**CodeAtlas** is a production-ready AI system that creates a digital knowledge twin from your technical content (GitHub repositories, Medium articles, LinkedIn posts). It leverages state-of-the-art RAG (Retrieval-Augmented Generation) techniques to answer questions using your specific knowledge base, preventing hallucinations and ensuring accurate responses.
 
 ### 🎯 What Makes This Different?
 
-Unlike typical RAG tutorials that end with basic semantic search, NeuralTwin demonstrates:
+Unlike typical RAG tutorials that end with basic semantic search, CodeAtlas demonstrates:
 
 - **Production MLOps:** Complete pipeline orchestration with ZenML, experiment tracking, and monitoring
 - **Advanced RAG:** Hybrid retrieval (dense + sparse), reranking, query expansion, and semantic caching
@@ -618,8 +618,8 @@ flowchart LR
 
 ```bash
 # Clone repository
-git clone https://github.com/ductaip/neuraltwin.git
-cd neuraltwin
+git clone https://github.com/ductaip/codeatlas.git
+cd codeatlas
 
 # Setup environment & install dependencies
 make setup
@@ -660,7 +660,7 @@ make rag-server
 make rag-test
 ```
 
-That's it! Your NeuralTwin is now running locally. 🎉
+That's it! Your CodeAtlas is now running locally. 🎉
 
 ---
 
@@ -680,7 +680,7 @@ That's it! Your NeuralTwin is now running locally. 🎉
 ## 📂 Project Structure
 
 ```
-neuraltwin/
+codeatlas/
 ├── configs/                 # Pipeline configurations
 ├── docs/                    # Architecture & setup guides
 │   ├── ARCHITECTURE.md
@@ -870,6 +870,6 @@ Significantly refactored and enhanced with:
 
 **⭐ If this project helped you, please consider giving it a star!**
 
-[Report Bug](https://github.com/ductaip/neuraltwin/issues) · [Request Feature](https://github.com/ductaip/neuraltwin/issues) · [Documentation](docs/)
+[Report Bug](https://github.com/ductaip/codeatlas/issues) · [Request Feature](https://github.com/ductaip/codeatlas/issues) · [Documentation](docs/)
 
 </div>

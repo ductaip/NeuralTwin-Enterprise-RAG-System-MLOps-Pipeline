@@ -1,0 +1,110 @@
+import json
+from typing import Any, Dict, Optional
+
+from loguru import logger
+
+try:
+    import boto3
+except ModuleNotFoundError:
+    logger.warning("Couldn't load AWS or SageMaker imports. Run 'poetry install --with aws' to support AWS.")
+
+
+from codeatlas.domain.inference import Inference
+from codeatlas.settings import settings
+
+
+class LLMInferenceSagemakerEndpoint(Inference):
+    """
+    Class for performing inference using a SageMaker endpoint for LLM schemas.
+    """
+
+    def __init__(
+        self,
+        endpoint_name: str,
+        default_payload: Optional[Dict[str, Any]] = None,
+        inference_component_name: Optional[str] = None,
+    ) -> None:
+        super().__init__()
+
+        self.client = boto3.client(
+            "sagemaker-runtime",
+            region_name=settings.AWS_REGION,
+            aws_access_key_id=settings.AWS_ACCESS_KEY,
+            aws_secret_access_key=settings.AWS_SECRET_KEY,
+        )
+        self.endpoint_name = endpoint_name
+        self.payload = default_payload if default_payload else self._default_payload()
+        self.inference_component_name = inference_component_name
+
+    def _default_payload(self) -> Dict[str, Any]:
+        """
+        Generates the default payload for the inference request.
+        Supports standard Text Generation Inference (TGI) and vLLM containers on SageMaker.
+        """
+        return {
+            "inputs": "How is the weather?",
+            "parameters": {
+                "max_new_tokens": settings.MAX_NEW_TOKENS_INFERENCE,
+                "top_p": settings.TOP_P_INFERENCE,
+                "temperature": settings.TEMPERATURE_INFERENCE,
+                "return_full_text": False,
+            },
+        }
+
+    def set_payload(self, inputs: str, parameters: Optional[Dict[str, Any]] = None, is_vllm: bool = False) -> None:
+        """
+        Sets the payload for the inference request.
+
+        Args:
+            inputs (str): The input text for the inference.
+            parameters (dict, optional): Additional parameters for the inference. Defaults to None.
+            is_vllm (bool): Flag to format payload specifically for vLLM/DJL containers.
+        """
+        if is_vllm:
+            # vLLM on SageMaker usually accepts a list of inputs or a strictly formatted OpenAI-style request
+            # For DJL/vLLM, standard format is often similar or specifically structured
+            self.payload_vllm_format(inputs, parameters)
+        else:
+            self.payload["inputs"] = inputs
+            if parameters:
+                 self.payload["parameters"].update(parameters)
+
+    def payload_vllm_format(self, inputs: str, parameters: Optional[Dict[str, Any]] = None) -> None:
+        """ Formats payload for SageMaker vLLM container. """
+        self.payload = {
+            "inputs": inputs,
+            "parameters": {
+                "max_tokens": parameters.get("max_new_tokens", settings.MAX_NEW_TOKENS_INFERENCE) if parameters else settings.MAX_NEW_TOKENS_INFERENCE,
+                "temperature": parameters.get("temperature", settings.TEMPERATURE_INFERENCE) if parameters else settings.TEMPERATURE_INFERENCE,
+                "top_p": parameters.get("top_p", settings.TOP_P_INFERENCE) if parameters else settings.TOP_P_INFERENCE,
+            }
+        }
+
+    def inference(self) -> Dict[str, Any]:
+        """
+        Performs the inference request using the SageMaker endpoint.
+
+        Returns:
+            dict: The response from the inference request.
+        Raises:
+            Exception: If an error occurs during the inference request.
+        """
+
+        try:
+            logger.info("Inference request sent.")
+            invoke_args = {
+                "EndpointName": self.endpoint_name,
+                "ContentType": "application/json",
+                "Body": json.dumps(self.payload),
+            }
+            if self.inference_component_name not in ["None", None]:
+                invoke_args["InferenceComponentName"] = self.inference_component_name
+            response = self.client.invoke_endpoint(**invoke_args)
+            response_body = response["Body"].read().decode("utf8")
+
+            return json.loads(response_body)
+
+        except Exception:
+            logger.exception("SageMaker inference failed.")
+
+            raise

@@ -1,13 +1,13 @@
 services:
   mongo:
     image: mongo:latest
-    container_name: "llm_engineering_mongo"
+    container_name: "codeatlas_mongo"
     logging:
       options:
         max-size: 1g
     environment:
-      MONGO_INITDB_ROOT_USERNAME: "llm_engineering"
-      MONGO_INITDB_ROOT_PASSWORD: "llm_engineering"
+      MONGO_INITDB_ROOT_USERNAME: "codeatlas"
+      MONGO_INITDB_ROOT_PASSWORD: "codeatlas"
     ports:
       - 27018:27017
     volumes:
@@ -23,7 +23,7 @@ services:
 
   redis:
     image: redis:latest
-    container_name: "llm_engineering_redis"
+    container_name: "codeatlas_redis"
     ports:
       - 6379:6379
     networks:
@@ -37,7 +37,7 @@ services:
 
   qdrant:
     image: qdrant/qdrant:latest
-    container_name: "llm_engineering_qdrant"
+    container_name: "codeatlas_qdrant"
     ports:
       - 6335:6333
       - 6336:6334
@@ -57,7 +57,7 @@ services:
 
   zookeeper:
     image: confluentinc/cp-zookeeper:7.5.0
-    container_name: "llm_engineering_zookeeper"
+    container_name: "codeatlas_zookeeper"
     environment:
       ZOOKEEPER_CLIENT_PORT: 2181
     ports:
@@ -73,7 +73,7 @@ services:
 
   kafka:
     image: confluentinc/cp-kafka:7.5.0
-    container_name: "llm_engineering_kafka"
+    container_name: "codeatlas_kafka"
     depends_on:
       zookeeper:
         condition: service_healthy
@@ -98,7 +98,7 @@ services:
   # --- Monitoring Stack ---
   prometheus:
     image: prom/prometheus:v2.51.1
-    container_name: "llm_engineering_prometheus"
+    container_name: "codeatlas_prometheus"
     volumes:
       - ./monitoring/prometheus:/etc/prometheus
       - prometheus_data:/prometheus
@@ -116,7 +116,7 @@ services:
 
   grafana:
     image: grafana/grafana:10.4.2
-    container_name: "llm_engineering_grafana"
+    container_name: "codeatlas_grafana"
     volumes:
       - grafana_data:/var/lib/grafana
     environment:
@@ -131,7 +131,7 @@ services:
 
   jaeger:
     image: jaegertracing/all-in-one:1.56
-    container_name: "llm_engineering_jaeger"
+    container_name: "codeatlas_jaeger"
     environment:
       - COLLECTOR_ZIPKIN_HOST_PORT=:9411
     ports:
@@ -149,7 +149,7 @@ services:
 
   node-exporter:
     image: prom/node-exporter:v1.7.0
-    container_name: "llm_engineering_node_exporter"
+    container_name: "codeatlas_node_exporter"
     volumes:
       - /proc:/host/proc:ro
       - /sys:/host/sys:ro
@@ -167,7 +167,7 @@ services:
 
   neo4j:
     image: neo4j:latest
-    container_name: "llm_engineering_neo4j"
+    container_name: "codeatlas_neo4j"
     ports:
       - "7474:7474"
       - "7687:7687"
@@ -181,8 +181,8 @@ services:
     build:
       context: .
       dockerfile: Dockerfile
-    container_name: "llm_engineering_rag_api"
-    command: uvicorn llm_engineering.infrastructure.inference_pipeline_api:app --host 0.0.0.0 --port 8000 --reload
+    container_name: "codeatlas_rag_api"
+    command: uvicorn codeatlas.infrastructure.inference_pipeline_api:app --host 0.0.0.0 --port 8000 --reload
     ports:
       - "8000:8000"
     environment:
@@ -233,5 +233,5 @@ volumes:
 networks:
   local:
     driver: bridge
-  llm_engineering:
+  codeatlas:
     driver: bridge
