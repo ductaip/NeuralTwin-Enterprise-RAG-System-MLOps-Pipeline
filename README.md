@@ -15,8 +15,7 @@
 
 [Features](#-key-features) •
 [Architecture](#-architecture) •
-[Quick Start](#-quick-start) •
-[Interview Guide](docs/INTERVIEW_GUIDE.md)
+[Quick Start](#-quick-start)
 
 </div>
 
@@ -287,7 +286,7 @@ flowchart LR
 **Retrieval Quality Evaluation:**
 
 ```python
-# evaluation/rag_metrics.py
+# codeatlas/eval/metrics.py
 
 def evaluate_retrieval(queries, ground_truth, retrieved):
     """
@@ -683,8 +682,6 @@ That's it! Your CodeAtlas is now running locally. 🎉
 codeatlas/
 ├── configs/                 # Pipeline configurations
 ├── docs/                    # Architecture & setup guides
-│   ├── ARCHITECTURE.md
-│   ├── RAG_PIPELINE.md
 │   └── SETUP.md
 ├── llm_engineering/         # Core application (DDD structure)
 │   ├── application/        # Business logic (RAG, crawlers)
@@ -706,11 +703,8 @@ codeatlas/
 
 ## 📚 Documentation
 
-- **[📖 Portfolio Summary](docs/PORTFOLIO_SUMMARY.md)** - Resume-ready project description
-- **[🏗️ Architecture Deep Dive](docs/ARCHITECTURE.md)** - System design details
+- **[📖 Portfolio Summary](PORTFOLIO_SUMMARY.md)** - Resume-ready project description
 - **[🔧 Setup Guide](docs/SETUP.md)** - Complete installation walkthrough
-- **[🔍 RAG Pipeline](docs/RAG_PIPELINE.md)** - Retrieval techniques explained
-- **[🎓 Training Showcase](training/showcase/README.md)** - Fine-tuning implementation
 - **[🧪 Testing Guide](docs/TESTING.md)** - Test coverage & strategies
 
 ---
