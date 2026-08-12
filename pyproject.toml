@@ -16,16 +16,6 @@ loguru = "^0.7.2"
 rich = "^13.7.1"
 numpy = "^1.26.4"
 poethepoet = "0.29.0"
-datasets = "^3.0.1"
-torch = "2.2.2"
-
-# Digital data ETL
-selenium = "^4.21.0"
-webdriver-manager = "^4.0.1"
-beautifulsoup4 = "^4.12.3"
-html2text = "^2024.2.26"
-jmespath = "^1.0.1"
-chromedriver-autoinstaller = "^0.6.4"
 
 # Feature engineering
 qdrant-client = "^1.8.0"
@@ -58,14 +48,6 @@ pre-commit = "^3.7.1"
 pytest = "^8.2.2"
 
 
-[tool.poetry.group.aws.dependencies]
-sagemaker = ">=2.232.2"
-s3fs = ">2022.3.0"
-aws-profile-manager = "^0.7.3"
-kubernetes = "^30.1.0"
-sagemaker-huggingface-inference-toolkit = "^2.4.0"
-
-
 [build-system]
 requires = ["poetry-core"]
 build-backend = "poetry.core.masonry.api"
@@ -76,32 +58,18 @@ build-backend = "poetry.core.masonry.api"
 
 [tool.poe.tasks]
 # Data pipelines
-run-digital-data-etl-alex = "echo 'It is not supported anymore.'"
-run-digital-data-etl-maxime = "poetry run python -m tools.run --run-etl --no-cache --etl-config-filename digital_data_etl_maxime_labonne.yaml"
-run-digital-data-etl-paul = "poetry run python -m tools.run --run-etl --no-cache --etl-config-filename digital_data_etl_paul_iusztin.yaml"
-run-digital-data-etl = [
-    "run-digital-data-etl-maxime",
-    "run-digital-data-etl-paul",
-]
 run-feature-engineering-pipeline = "poetry run python -m tools.run --no-cache --run-feature-engineering"
-run-generate-instruct-datasets-pipeline = "poetry run python -m tools.run --no-cache --run-generate-instruct-datasets"
-run-generate-preference-datasets-pipeline = "poetry run python -m tools.run --no-cache --run-generate-preference-datasets"
-run-end-to-end-data-pipeline = "poetry run python -m tools.run --no-cache --run-end-to-end-data"
 
 # Utility pipelines
 run-export-artifact-to-json-pipeline = "poetry run python -m tools.run --no-cache --run-export-artifact-to-json"
 run-export-data-warehouse-to-json = "poetry run python -m tools.data_warehouse --export-raw-data"
 run-import-data-warehouse-from-json = "poetry run python -m tools.data_warehouse --import-raw-data"
 
-# Training pipelines
-run-training-pipeline = "poetry run python -m tools.run --no-cache --run-training"
-run-evaluation-pipeline = "poetry run python -m tools.run --no-cache --run-evaluation"
-
 # Inference
 call-rag-retrieval-module = "poetry run python -m tools.rag"
 
 run-inference-ml-service = "poetry run uvicorn tools.ml_service:app --host 0.0.0.0 --port 8000 --reload"
-call-inference-ml-service = "curl -X POST 'http://127.0.0.1:8000/rag' -H 'Content-Type: application/json' -d '{\"query\": \"My name is Paul Iusztin. Could you draft a LinkedIn post discussing RAG systems? I am particularly interested in how RAG works and how it is integrated with vector DBs and LLMs.\"}'"
+call-inference-ml-service = "curl -X POST 'http://127.0.0.1:8000/rag' -H 'Content-Type: application/json' -d '{\"query\": \"How is the RRF algorithm implemented?\"}'"
 
 # Infrastructure
 ## Local infrastructure
@@ -118,24 +86,14 @@ local-infrastructure-down = [
     "local-zenml-server-down",
 ]
 set-local-stack = "poetry run zenml stack set default"
-set-aws-stack = "poetry run zenml stack set aws-stack"
-set-asynchronous-runs = "poetry run zenml orchestrator update aws-stack --synchronous=False"
 zenml-server-disconnect = "poetry run zenml disconnect"
 
 ## Settings
 export-settings-to-zenml = "poetry run python -m tools.run --export-settings"
 delete-settings-zenml = "poetry run zenml secret delete settings"
 
-## SageMaker
-create-sagemaker-role = "poetry run python -m codeatlas.infrastructure.aws.roles.create_sagemaker_role"
-create-sagemaker-execution-role = "poetry run python -m codeatlas.infrastructure.aws.roles.create_execution_role"
-deploy-inference-endpoint = "poetry run python -m codeatlas.infrastructure.aws.deploy.huggingface.run"
-test-sagemaker-endpoint = "poetry run python -m codeatlas.model.inference.test"
-delete-inference-endpoint = "poetry run python -m codeatlas.infrastructure.aws.deploy.delete_sagemaker_endpoint"
-
 ## Docker
 build-docker-image = "docker buildx build --platform linux/amd64 -t codeatlas -f Dockerfile ."
-run-docker-end-to-end-data-pipeline = "docker run --rm --network host --shm-size=2g --env-file .env codeatlas poetry poe --no-cache --run-end-to-end-data"
 bash-docker-container = "docker run --rm -it --network host --env-file .env codeatlas bash"
 
 # QA

@@ -192,7 +192,6 @@ services:
       - KAFKA_BOOTSTRAP_SERVERS=kafka:29092
       - REDIS_HOST=redis
       - REDIS_PORT=6379
-      - MOCK_LLM=true
     networks:
       - local
     depends_on:
