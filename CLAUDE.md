@@ -1,63 +1,49 @@
-<!-- gitnexus:start -->
-# GitNexus — Code Intelligence
+# CodeAtlas
 
-This project is indexed by GitNexus as **LLMTwin-NeuralTwin-Production-Grade-RAG-System-MLOps-Pipeline** (1945 symbols, 3267 relationships, 68 execution flows). Use the GitNexus MCP tools to understand code, assess impact, and navigate safely.
+Agentic **repository intelligence**: parse AST → call graph trong Neo4j + code chunk trong Qdrant → agent định tuyến giữa hai nguồn để trả lời "đổi hàm này thì cái gì hỏng", và ở mode refactor thì tự sinh patch, chạy đúng tập test bị ảnh hưởng, đọc lỗi và sửa lại.
 
-> If any GitNexus tool warns the index is stale, run `npx gitnexus analyze` in terminal first.
+Repo này đang **chuyển domain từ NeuralTwin** (digital twin cá nhân) sang CodeAtlas. Giữ ~70% hạ tầng, thay tầng domain và tầng orchestration.
 
-## Always Do
+## Đọc trước khi làm bất cứ việc gì
 
-- **MUST run impact analysis before editing any symbol.** Before modifying a function, class, or method, run `gitnexus_impact({target: "symbolName", direction: "upstream"})` and report the blast radius (direct callers, affected processes, risk level) to the user.
-- **MUST run `gitnexus_detect_changes()` before committing** to verify your changes only affect expected symbols and execution flows.
-- **MUST warn the user** if impact analysis returns HIGH or CRITICAL risk before proceeding with edits.
-- When exploring unfamiliar code, use `gitnexus_query({query: "concept"})` to find execution flows instead of grepping. It returns process-grouped results ranked by relevance.
-- When you need full context on a specific symbol — callers, callees, which execution flows it participates in — use `gitnexus_context({name: "symbolName"})`.
+| File | Nội dung |
+|---|---|
+| `docs/CODEATLAS_SPEC.md` | Kiến trúc đích. Graph schema §2.2, `AtlasState` §2.3, tool set §2.4, eval §3. **Là nguồn sự thật.** |
+| `docs/codeatlas_roadmap.md` | Thứ tự thi công 7 phase + prompt từng phase. Mục **"⚠️ Đính chính sau Phase 0/0.5"** ở đầu file **thắng** mọi chỗ mâu thuẫn trong prompt phía dưới. |
+| `docs/MIGRATION_AUDIT.md` | Bảng KEEP/MODIFY/DELETE từ Phase 0 |
 
-## Never Do
+## Trạng thái hiện tại
 
-- NEVER edit a function, class, or method without first running `gitnexus_impact` on it.
-- NEVER ignore HIGH or CRITICAL risk warnings from impact analysis.
-- NEVER rename symbols with find-and-replace — use `gitnexus_rename` which understands the call graph.
-- NEVER commit changes without running `gitnexus_detect_changes()` to check affected scope.
+**Xong:** Phase 0 (audit, xoá crawler social, rename `llm_engineering`→`codeatlas`), Phase 0.5 (xoá finetuning/SageMaker/AWS, xoá agent stub, sửa điểm gãy import).
 
-## Resources
+**Tiếp theo:** Phase 1 — AST ingester + symbol resolver.
 
-| Resource | Use for |
-|----------|---------|
-| `gitnexus://repo/LLMTwin-NeuralTwin-Production-Grade-RAG-System-MLOps-Pipeline/context` | Codebase overview, check index freshness |
-| `gitnexus://repo/LLMTwin-NeuralTwin-Production-Grade-RAG-System-MLOps-Pipeline/clusters` | All functional areas |
-| `gitnexus://repo/LLMTwin-NeuralTwin-Production-Grade-RAG-System-MLOps-Pipeline/processes` | All execution flows |
-| `gitnexus://repo/LLMTwin-NeuralTwin-Production-Grade-RAG-System-MLOps-Pipeline/process/{name}` | Step-by-step execution trace |
+**Test:** `pytest` xanh 9/9 — nhưng chỉ phủ `clean_text` (5) + Mongo connector (3) + 1 example. **Không có test nào chạm retrieval, graph, hay agent.** Đây không phải lưới an toàn.
 
-## CLI
+**Còn mock có chủ ý:** 6 file `application/rag/*`, `application/ai_facade.py`, `application/graph/ingestor.py`. Xoá ở **Phase 2** khi đã có `GroqProvider`/`ModalVLLMProvider` thật — xoá sớm hơn thì `/rag` chết mà chưa có gì thay thế.
 
-| Task | Read this skill file |
-|------|---------------------|
-| Understand architecture / "How does X work?" | `.claude/skills/gitnexus/gitnexus-exploring/SKILL.md` |
-| Blast radius / "What breaks if I change X?" | `.claude/skills/gitnexus/gitnexus-impact-analysis/SKILL.md` |
-| Trace bugs / "Why is X failing?" | `.claude/skills/gitnexus/gitnexus-debugging/SKILL.md` |
-| Rename / extract / split / refactor | `.claude/skills/gitnexus/gitnexus-refactoring/SKILL.md` |
-| Tools, resources, schema reference | `.claude/skills/gitnexus/gitnexus-guide/SKILL.md` |
-| Index, status, clean, wiki CLI commands | `.claude/skills/gitnexus/gitnexus-cli/SKILL.md` |
-| Work in the Base area (46 symbols) | `.claude/skills/generated/base/SKILL.md` |
-| Work in the Domain area (39 symbols) | `.claude/skills/generated/domain/SKILL.md` |
-| Work in the Crawlers area (21 symbols) | `.claude/skills/generated/crawlers/SKILL.md` |
-| Work in the Preprocessing area (20 symbols) | `.claude/skills/generated/preprocessing/SKILL.md` |
-| Work in the Rag area (17 symbols) | `.claude/skills/generated/rag/SKILL.md` |
-| Work in the Application area (14 symbols) | `.claude/skills/generated/application/SKILL.md` |
-| Work in the Generate_datasets area (12 symbols) | `.claude/skills/generated/generate-datasets/SKILL.md` |
-| Work in the Operations area (11 symbols) | `.claude/skills/generated/operations/SKILL.md` |
-| Work in the Graph area (11 symbols) | `.claude/skills/generated/graph/SKILL.md` |
-| Work in the Feature_engineering area (9 symbols) | `.claude/skills/generated/feature-engineering/SKILL.md` |
-| Work in the Infrastructure area (8 symbols) | `.claude/skills/generated/infrastructure/SKILL.md` |
-| Work in the Dataset area (8 symbols) | `.claude/skills/generated/dataset/SKILL.md` |
-| Work in the Evaluation area (8 symbols) | `.claude/skills/generated/evaluation/SKILL.md` |
-| Work in the Agents area (6 symbols) | `.claude/skills/generated/agents/SKILL.md` |
-| Work in the Etl area (6 symbols) | `.claude/skills/generated/etl/SKILL.md` |
-| Work in the Tools area (5 symbols) | `.claude/skills/generated/tools/SKILL.md` |
-| Work in the Inference area (5 symbols) | `.claude/skills/generated/inference/SKILL.md` |
-| Work in the Deploy area (5 symbols) | `.claude/skills/generated/deploy/SKILL.md` |
-| Work in the Pipelines area (4 symbols) | `.claude/skills/generated/pipelines/SKILL.md` |
-| Work in the Export area (4 symbols) | `.claude/skills/generated/export/SKILL.md` |
+## Luật cứng
 
-<!-- gitnexus:end -->
+- **Không thêm mock mới.** Không `MOCK_*` flag, không nhánh fallback trả dữ liệu giả, không hardcode kết quả theo keyword. Chưa implement được thì `raise NotImplementedError` với thông báo rõ. Repo này đã một lần suýt mang số liệu đo từ pipeline có mock ở giữa đi phỏng vấn — đừng lặp lại.
+- **Mọi module mới phải kèm test của chính nó.** Không giả định có sẵn gì đỡ phía dưới.
+- **Không đoán bừa khi resolve symbol.** Không chắc thì gán `confidence` thấp + `unresolved=true`. Downstream là impact analysis: một edge sai = một test bị bỏ sót, tệ hơn nhiều so với thiếu edge.
+- **Không bịa trích dẫn.** Câu trả lời phải có `[file.py:12-30]` trỏ đúng dòng thật; không tìm thấy thì nói "không tìm thấy trong codebase".
+- **Kết quả âm vẫn phải báo đúng.** Nếu số liệu không khớp giả thuyết, báo cáo như vậy kèm phân tích. Không tinh chỉnh gold set cho ra số đẹp.
+- **Phase 1, 4, 5 có bước "trình bày thiết kế, chờ duyệt" trước khi code.** Đừng nhảy thẳng vào implement.
+
+## Môi trường
+
+```bash
+export PATH="$HOME/.local/bin:$PATH"   # poetry KHÔNG có sẵn trên PATH mặc định
+poetry install --no-root
+poetry run pytest tests/ -v
+```
+
+venv: `~/.cache/pypoetry/virtualenvs/codeatlas-k_0uQjOe-py3.11`. Python 3.11.
+`torch` vẫn được cài như transitive dependency của `sentence-transformers` (đã gỡ khỏi `pyproject.toml` dưới dạng explicit dep) — lần install đầu tải khá lâu.
+
+**Báo cáo trung thực:** `py_compile` không chứng minh được gì về runtime. Nói "xong" chỉ khi đã chạy `pytest` thật và dán kết quả.
+
+## Giữ nguyên, đừng đụng vào
+
+Qdrant client, `infrastructure/graph/neo4j_adapter.py`, RRF (k=60), cross-encoder reranker, ZenML, Kafka, FastAPI + SSE, Redis, Prometheus/Grafana/Jaeger, Docker/K8s manifests.
