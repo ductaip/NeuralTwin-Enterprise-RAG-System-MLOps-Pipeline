@@ -36,6 +36,23 @@ class Settings(BaseSettings):
     DATABASE_HOST: str = "mongodb://codeatlas:codeatlas@127.0.0.1:27017"
     DATABASE_NAME: str = "twin"
 
+    # Neo4j graph database
+    NEO4J_URI: str = "bolt://localhost:7687"
+    NEO4J_USERNAME: str = "neo4j"
+    NEO4J_PASSWORD: str = "password"
+    NEO4J_DATABASE: str = "neo4j"
+
+    # Ingestion (Phase 1)
+    INGESTION_BATCH_SIZE: int = 1000
+
+    # Ngưỡng confidence cho CALL edge. KHÔNG hardcode trong Cypher — mọi truy vấn
+    # nhận ngưỡng qua tham số $min_confidence để Phase 5 quét được như một trục ablation.
+    # Mặc định thấp vì chọn test là bài toán recall-first: thiếu edge -> bỏ sót test -> bug
+    # lọt production; thừa edge -> chạy dư vài test. Xem docs/CODEATLAS_SPEC.md §2.2.
+    CALL_EDGE_MIN_CONFIDENCE_IMPACT: float = 0.5
+    # Ngưỡng cao cho phân tích cấu trúc (fan-in, dead code) — ở đó nhiễu mới là cái hại.
+    CALL_EDGE_MIN_CONFIDENCE_STRUCTURAL: float = 0.9
+
     # Qdrant vector database
     USE_QDRANT_CLOUD: bool = False
     QDRANT_DATABASE_HOST: str = "localhost"

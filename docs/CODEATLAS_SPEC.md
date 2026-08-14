@@ -50,7 +50,7 @@ impact_analysis (graph) → generate_patch → sandbox apply → run affected te
 > Hai loại truy vấn khác nhau. "Code retry logic ở đâu" là semantic → vector. "Hàm này bị ai gọi qua 2 hop" là truy vấn cấu trúc → traversal. Embedding không mã hoá được quan hệ bắc cầu. Em có ablation cho thấy vector-only sập ở nhóm câu structural và impact.
 
 **"Sao dùng LangGraph, chẳng phải anh từng chê LangChain bloat?"**
-> Em viết custom ReAct trước và nó đúng cho mode QA — một vòng lặp, không branching. Khi thêm mode refactor thì workflow có cycle (sửa-test-sửa lại), cần pause chờ người duyệt trước khi apply patch, và cần resume nếu crash giữa chừng. Ba thứ đó tự viết được nhưng sẽ là viết lại checkpointer và interrupt. Đó là lúc framework đáng giá. Em vẫn giữ custom loop cho mode QA để so sánh overhead.
+> Em không tin vào lý lẽ suông nên viết cả hai rồi đo. Custom ReAct (~80 dòng) đủ và đúng cho mode QA — một vòng lặp, không branching, không cần framework. Nhưng mode refactor thì workflow có cycle (sửa–test–sửa lại), cần pause chờ người duyệt trước khi apply patch, và cần resume nếu crash giữa chừng. Ba thứ đó tự viết được, nhưng viết ra thì chính là viết lại checkpointer và interrupt. Đó là lúc framework đáng giá. Bảng B trong phần eval là số liệu so sánh hai cách, có cả cột LOC — kể cả khi nó bất lợi cho LangGraph.
 
 **"Sao hai backend LLM?"**
 > Chọn theo profile workload. Agent gọi 8 lượt tuần tự nên demo là latency-bound → Groq chạy 300–1.000 token/giây. Eval là throughput-bound, ~1.6M token mỗi lần chạy, vượt xa hạn mức free tier → Modal + vLLM, không rate limit và kiểm soát được seed.
@@ -75,7 +75,7 @@ impact_analysis (graph) → generate_patch → sandbox apply → run affected te
 | HyDE | Đổi prompt → sinh code snippet | 🟢 Nhẹ |
 | RRF (k=60) | Giữ nguyên | 🟢 Giữ |
 | Cross-encoder rerank | Giữ nguyên | 🟢 Giữ |
-| **Custom ReAct loop** | **Giữ cho mode QA** (baseline so sánh) | 🟢 Giữ |
+| ~~Custom ReAct loop~~ — thực chất là mock loop, đã xoá ở Phase 0.5 | **Viết mới** (~80 dòng) cho mode QA, làm baseline so sánh | 🔴 Mới |
 | — | **LangGraph** cho mode Refactor | 🔴 Mới |
 | LLM Factory | + `GroqProvider`, `ModalVLLMProvider` | 🟠 Vừa |
 | **Mock Mode** | ❌ **XOÁ HOÀN TOÀN** | 🔴 Xoá |
@@ -324,11 +324,13 @@ System:      p50/p95 latency, tokens/query, index time /1k LOC
 
 | Cấu hình | QA acc | Refactor success | Latency p95 | LOC |
 |---|---|---|---|---|
-| Custom ReAct loop | | ❌ không hỗ trợ | | |
+| Custom ReAct loop (viết mới ở Phase 3) | | ❌ không hỗ trợ | | |
 | LangGraph (QA mode) | | ❌ | | |
 | LangGraph (Refactor + verify) | | | | |
 
 Cột LOC (số dòng orchestration code) cho thấy chi phí thật của framework. Trung thực cả khi nó bất lợi.
+
+⚠️ **Đính chính sau Phase 0.5:** loop ReAct trong NeuralTwin là mock (`_mock_solve_loop`, tool trả string hardcode) nên đã bị xoá — **không còn baseline kế thừa**. Cả hai nhánh trong bảng này đều được viết mới ở Phase 3, cùng một bộ tool và cùng một retrieval layer, để so sánh chỉ khác nhau ở tầng orchestration. Điều này làm bảng B **công bằng hơn** so với kế hoạch cũ (so code cũ với code mới là so sai), nhưng phải nói rõ khi trình bày: đây là so sánh hai implementation viết cùng lúc, không phải hành trình tiến hoá theo thời gian.
 
 ### Bảng C — Test selection
 

@@ -222,7 +222,8 @@ Toàn bộ 9 file `configs/*.yaml` cũng đang hardcode `parent_image: ...amazon
 | `.github/workflows/cd.yaml` | Build & push Docker image lên ECR (chỉ chạy nếu có AWS creds) | **KEEP** | Generic, gắn AWS ECR nhưng đây là CI/CD deploy chung, không phải SageMaker finetuning — giữ được dù xoá `infrastructure/aws/`. |
 | `Dockerfile` | Build image | **MODIFY** | Cần sửa nếu đổi package path `llm_engineering` → `codeatlas`. |
 | `setup.sh`, `.pre-commit-config.yaml`, `ruff.toml`, `.python-version` | Tooling | **KEEP** | Generic, không gắn domain. |
-| `.gitnexus/`, `.claude/`, `.vscode/`, `.zen/` | Tooling nội bộ (GitNexus index, Claude skills, editor config) | **KEEP** | Ngoài phạm vi migration, sẽ tự cập nhật khi code đổi. |
+| `.gitnexus/`, `.claude/skills/`, `AGENTS.md`, `PORTFOLIO_SUMMARY.md` | Tooling nội bộ GitNexus + portfolio doc cũ | ~~KEEP~~ → **DELETED** | Đánh giá ban đầu sai ("sẽ tự cập nhật khi code đổi" — không, index là snapshot tĩnh). Index chụp ở commit `5f1030b` (03/04), tức trước toàn bộ migration; 26 thư mục skill đều **rỗng 0 file**; 7/20 khu vực nó mô tả đã bị xoá. `CLAUDE.md`/`AGENTS.md` (giống hệt nhau, đang track trong git) tuyên bố repo được index bởi một tool code-graph khác — phản tác dụng cho repo portfolio của chính một tool code-graph. `PORTFOLIO_SUMMARY.md` mô tả NeuralTwin và tự ghi "Performance Metrics (Simulated)". Đã xoá; `CLAUDE.md` viết lại cho CodeAtlas. |
+| `.vscode/`, `.zen/` | Editor config | **KEEP** | Ngoài phạm vi migration. |
 
 ---
 

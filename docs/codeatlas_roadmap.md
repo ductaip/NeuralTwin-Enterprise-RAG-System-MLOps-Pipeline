@@ -35,6 +35,21 @@ Phase 4 là thứ tạo ấn tượng mạnh nhất, nhưng Phase 5 (eval) mới
 
 ---
 
+# ⚠️ Đính chính sau Phase 0/0.5 — đọc trước khi vào bất kỳ phase nào
+
+Ba điều dưới đây làm sai lệch prompt gốc. Prompt các phase sau vẫn giữ nguyên văn để lưu vết, nhưng chỗ nào mâu thuẫn thì mục này thắng.
+
+**1. Không còn custom ReAct loop để kế thừa.**
+Loop trong NeuralTwin là mock — `_mock_solve_loop()`, `use_mock_llm` mặc định `True`, tool trả string hardcode theo keyword. Đã xoá hẳn ở Phase 0.5. Nên câu "GIỮ LẠI custom ReAct loop" ở Phase 0 mục 4 và Phase 3 mục 7 là **sai**: Phase 3 phải **viết mới cả hai** orchestrator, dùng chung tool + chung retrieval layer. Xem `CODEATLAS_SPEC.md` §3.3 Bảng B.
+
+**2. Baseline test không phải lưới an toàn.**
+Sau Phase 0.5: `pytest` xanh 9/9 — nhưng 9 test đó chỉ phủ `clean_text` (5) và Mongo connector (3) + 1 example. **Không có test nào chạm retrieval, graph, hay agent.** "Xanh" ở đây chỉ nghĩa là repo import được và không vỡ. Mọi module mới từ Phase 1 trở đi phải tự mang test của chính nó — đừng giả định có gì đỡ phía dưới.
+
+**3. Mock trong `rag/` vẫn còn, và đó là cố ý.**
+Phase 0.5 chỉ xoá mock ở `agents/` (bằng cách xoá cả 2 file) và gỡ `MOCK_LLM=true` hardcode khỏi `docker-compose.yml`/`.env.example`. Nhánh mock trong 6 file `application/rag/*`, `ai_facade.py`, và `graph/ingestor.py` **vẫn nguyên** — xoá ngay thì `/rag` chết mà chưa có gì thay thế. **Phase 2 mới là chỗ xoá**, khi `GroqProvider`/`ModalVLLMProvider` đã có. Cổng chặn `grep -ri "mock" codeatlas/` phải rỗng chỉ áp dụng từ **cuối Phase 2** trở đi, không phải bây giờ.
+
+---
+
 # PHASE 0 — Audit & dọn dẹp
 ### 🤖 Sonnet
 
@@ -153,6 +168,14 @@ cách xử lý từng case ở mục 3, cách tính confidence. CHỜ TÔI DUY�
 BƯỚC 2: Sau khi duyệt mới implement.
 BƯỚC 3: Test trên repo `fastapi`. Báo cáo: tỉ lệ call edge resolve
 được (%), và 10 ví dụ unresolved điển hình để tôi đánh giá.
+
+=== BỔ SUNG (rút ra từ Phase 0/0.5) ===
+- Repo này từng có graph ingestion dựa trên regex (`_mock_extraction`
+  trong `application/graph/ingestor.py`). ĐỪNG tham khảo cách nó
+  extract entity — chỉ tham khảo cách nó batch-write Neo4j (MERGE,
+  UNWIND). Phần extraction phải viết mới hoàn toàn bằng AST.
+- Test suite hiện tại chỉ 9 test, không phủ retrieval/graph. Đừng giả
+  định có lưới an toàn — mọi module mới phải kèm test của chính nó.
 ```
 
 **✅ Xong phase khi:** index được `fastapi`, tỉ lệ resolve ≥ 80%, chạy lại không nhân đôi node, 15 unit test xanh.
@@ -234,9 +257,14 @@ Phase 3: dựng LangGraph cho mode QA. Dùng LangGraph 1.2.
 6. Streaming: dùng LangGraph streaming để đẩy từng node transition
    và token ra SSE endpoint FastAPI có sẵn.
 
-7. GIỮ LẠI custom ReAct loop cũ, cho chạy song song được qua flag
-   `--orchestrator=custom|langgraph`. Tôi cần so sánh hai cái ở
-   phase eval.
+7. VIẾT MỚI custom ReAct loop (~80 dòng), chạy song song với LangGraph
+   qua flag `--orchestrator=custom|langgraph`. Tôi cần so sánh hai cái
+   ở phase eval.
+   LƯU Ý: loop ReAct cũ trong NeuralTwin là mock (tool trả string
+   hardcode) nên đã bị xoá ở Phase 0.5 — KHÔNG có gì để giữ lại.
+   Hai orchestrator phải dùng CHUNG một bộ tool và CHUNG retrieval
+   layer của Phase 2, chỉ khác nhau ở tầng điều phối. Nếu chúng khác
+   nhau ở tool hay retrieval thì bảng B đo sai thứ cần đo.
 
 8. Câu trả lời cuối BẮT BUỘC có trích dẫn [file.py:12-30].
    Không có source thì nói "không tìm thấy trong codebase",
@@ -420,7 +448,7 @@ Phase 6: hoàn thiện để trình diễn.
    Decision / Consequences cho mỗi quyết định:
    - Tại sao Neo4j (và khi nào Qdrant là đủ)
    - Tại sao RRF thay vì weighted sum
-   - Tại sao LangGraph cho refactor nhưng giữ custom loop cho QA
+   - Tại sao LangGraph cho refactor nhưng custom loop là đủ cho QA
    - Tại sao chunk theo function
    - Tại sao Groq cho demo và Modal cho eval
    - Tại sao đánh dấu unresolved thay vì đoán
@@ -444,10 +472,11 @@ Phase 6: hoàn thiện để trình diễn.
 
 | Phase | Model | Xong | Tiêu chí nghiệm thu |
 |---|---|---|---|
-| 0 | Sonnet | ☐ | `grep -ri mock` sạch, có MIGRATION_AUDIT.md |
+| 0 | Sonnet | ☑ | `grep -ri mock codeatlas/application/agents/` sạch, có MIGRATION_AUDIT.md |
+| 0.5 | Sonnet | ☑ | 3 điểm gãy đã sửa, xoá finetuning/SageMaker, `pytest` xanh 9/9 thật |
 | 1 | **Opus** | ☐ | Resolve rate ≥ 80% trên fastapi, 15 test xanh |
-| 2 | Sonnet | ☐ | 3 retriever chạy độc lập, Groq + Modal gọi thật được |
-| 3 | Sonnet | ☐ | Hai orchestrator chạy song song so sánh được |
+| 2 | Sonnet | ☐ | 3 retriever chạy độc lập, Groq + Modal gọi thật được, `grep -ri mock codeatlas/` rỗng |
+| 3 | Sonnet | ☐ | Hai orchestrator (đều viết mới) chạy song song so sánh được |
 | 4 | **Opus** | ☐ | 3 task refactor, ≥1 task cần repair và hồi phục |
 | 5 | **Opus** | ☐ | Ba bảng ablation có số thật, tái lập được |
 | 6 | Sonnet | ☐ | Người lạ chạy được trong 5 phút |

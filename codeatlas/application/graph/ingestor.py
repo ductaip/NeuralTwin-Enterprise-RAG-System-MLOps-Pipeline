@@ -4,6 +4,8 @@ from codeatlas.infrastructure.graph.neo4j_adapter import Neo4jAdapter
 from codeatlas.domain.base.patterns import SingletonMeta
 
 class GraphIngestor(metaclass=SingletonMeta):
+    ALLOWED_RELATIONSHIP_TYPES = frozenset({"USED_FOR", "IS_A", "HANDLES"})
+
     def __init__(self, mock: bool = True):
         self._neo4j = Neo4jAdapter()
         self._mock = mock
@@ -66,9 +68,18 @@ class GraphIngestor(metaclass=SingletonMeta):
             
         # Create Entity-Entity Relationships
         for rel in relationships:
+            # Relationship type cannot be parameterised in Cypher, so it is interpolated.
+            # Validate it against an allowlist first — interpolating an unchecked string
+            # here is a Cypher injection hole the moment the type stops being a literal.
+            rel_type = rel["type"]
+            if rel_type not in self.ALLOWED_RELATIONSHIP_TYPES:
+                raise ValueError(
+                    f"Refusing to build Cypher with unknown relationship type {rel_type!r}. "
+                    f"Allowed: {sorted(self.ALLOWED_RELATIONSHIP_TYPES)}"
+                )
             query = f"""
             MATCH (a:Entity {{name: $source}}), (b:Entity {{name: $target}})
-            MERGE (a)-[:{rel['type']}]->(b)
+            MERGE (a)-[:{rel_type}]->(b)
             """
             # Ensure target exists too (simple mock fix)
             self._neo4j.execute_query(
