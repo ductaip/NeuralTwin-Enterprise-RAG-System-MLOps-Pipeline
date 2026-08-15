@@ -571,6 +571,25 @@ def test_return_annotation_types_the_result():
     assert reason_for(result, "pkg.mod.caller", "pkg.mod.Engine.start") == "inferred_return_own"
 
 
+def test_pytest_fixture_is_not_marked_as_a_test():
+    """`pytest tests/x.py::get_client` is not a runnable node id — fixtures are not tests."""
+    resolver, _ = build(
+        {
+            "tests/test_mod.py": (
+                "import pytest\n\n"
+                "@pytest.fixture\n"
+                "def get_client():\n"
+                "    return 1\n"
+                "\n"
+                "def test_real():\n"
+                "    pass\n"
+            )
+        }
+    )
+    assert resolver.symbol_table["tests.test_mod.get_client"].is_test is False
+    assert resolver.symbol_table["tests.test_mod.test_real"].is_test is True
+
+
 def test_inheritance_edges_split_internal_and_external():
     _, result = build(
         {

@@ -397,12 +397,21 @@ class _ModuleVisitor:
         return f"{node.name}({args})" + (f" -> {returns}" if returns else "")
 
     def _is_test_function(self, node: ast.AST, decorators: list[str]) -> bool:
+        """A test is something pytest will *run*.
+
+        Fixtures are excluded even though they are decorated with `pytest.*`: a fixture is
+        not a runnable node id, so letting one into `affected_tests` would hand Phase 4 a
+        `pytest tests/x.py::get_client` invocation that cannot succeed.
+        """
+        if any("fixture" in d for d in decorators):
+            return False
+
         name = getattr(node, "name", "")
         if name.startswith("test_"):
             return True
         if self.is_test_file and name.startswith("test"):
             return True
-        return any("pytest" in d for d in decorators)
+        return any("pytest.mark" in d for d in decorators)
 
     def _bind_parameters(self, scope: Scope, args: ast.arguments) -> None:
         all_args = [*args.posonlyargs, *args.args, *args.kwonlyargs]

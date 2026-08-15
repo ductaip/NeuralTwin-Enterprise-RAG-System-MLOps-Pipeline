@@ -103,7 +103,7 @@ impact_analysis (graph) → generate_patch → sandbox apply → run affected te
 (:Function) -[:DEFINED_IN]->     (:File)
 (:Class)    -[:DEFINED_IN]->     (:File)
 (:Function) -[:METHOD_OF]->      (:Class)
-(:Function) -[:CALLS {line, confidence}]-> (:Function)
+(:Function) -[:CALLS {line, confidence, reason}]-> (:Function|:Class)
 (:File)     -[:IMPORTS {alias}]->(:Module)
 (:Class)    -[:INHERITS]->       (:Class)
 (:Test)     -[:TESTS]->          (:Function)
@@ -113,6 +113,14 @@ CREATE INDEX fn_qn   IF NOT EXISTS FOR (f:Function) ON (f.qualified_name);
 CREATE INDEX cls_qn  IF NOT EXISTS FOR (c:Class)    ON (c.qualified_name);
 CREATE INDEX file_p  IF NOT EXISTS FOR (f:File)     ON (f.path);
 ```
+
+### Ba điều chỉnh sau Phase 1 (đã đo, không phải giả định)
+
+**1. `CALLS` có thể trỏ vào `:Class`.** `MyClass()` được resolve về `MyClass.__init__`; khi class không định nghĩa `__init__` thì edge trỏ thẳng vào node `Class`. Bỏ edge đó thì impact analysis mù với **mọi** lời gọi khởi tạo — trên fastapi, `FastAPI.__init__` có fan-in 720, tức nếu bỏ thì mất đúng quan hệ dày nhất trong repo. Nhất quán với nguyên tắc recall-first.
+
+**2. Ngưỡng confidence là tham số, không hardcode.** Mọi truy vấn nhận `$min_confidence`. Mặc định: `0.5` cho chọn test (thiếu edge → bỏ sót test → bug lọt production), `0.9` cho fan-in/dead-code (ở đó nhiễu mới là cái hại). Xem `settings.CALL_EDGE_MIN_CONFIDENCE_*`.
+
+**3. `qualified_name` theo ngữ nghĩa `__qualname__`**, kể cả `<locals>`: `pkg.mod.outer.<locals>.inner`. Xấu trong Cypher nhưng bắt buộc vì đây là khoá `MERGE` — hai hàm `inner` khác nhau trùng khoá thì graph gộp âm thầm, không báo lỗi, chỉ trả lời sai.
 
 ### Cypher lõi
 
