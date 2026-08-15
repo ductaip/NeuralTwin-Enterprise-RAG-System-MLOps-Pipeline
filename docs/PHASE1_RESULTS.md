@@ -147,6 +147,38 @@ test_foo()  →  client.get("/")  →  [ranh giới TestClient/HTTP]  →  route
 
 **Cần quyết trước Phase 4**, vì mode Refactor phụ thuộc hoàn toàn vào `affected_tests`.
 
+**Cách kể phát hiện này khi phỏng vấn:** "Em đo chính tuyên bố cốt lõi của mình và phát hiện nó chỉ đúng với unit test gọi thẳng hàm. Với integration test qua HTTP, static call graph đứt tại `TestClient`. Em bổ sung coverage data như một nguồn thứ hai và giữ tách khỏi `TESTS` để đo được đóng góp riêng của từng nguồn, thay vì âm thầm trộn hai thứ có đặc tính ngược nhau."
+
+### Quyết định: `COVERS`, tách khỏi `TESTS`, triển khai ở Phase 4
+
+Không sửa ngay ở Phase 1 — `Function -> Function` graph vẫn cần cho impact analysis, và coverage là **tầng bổ sung**, không thay thế. Xây bây giờ là làm việc mà chưa biết Phase 3 cần đúng hình dạng gì. Nhưng không được để trượt qua Phase 4, vì đó là nơi `affected_tests` quyết định trực tiếp việc gì được chạy.
+
+```cypher
+(:Test)-[:TESTS]->(:Function)          // từ AST — precision cao, recall thấp
+(:Test)-[:COVERS {hits}]->(:Function)  // từ coverage — recall cao, precision thấp
+```
+
+Hai nguồn có đặc tính ngược nhau, không gộp làm một — giữ tách cho phép Phase 5 đo riêng từng nguồn, thêm một hàng miễn phí vào Bảng C (xem `CODEATLAS_SPEC.md` §3.3).
+
+Thu thập: chạy suite một lần với `coverage run --context=test` (`dynamic_context = "test_function"` trong config), map context → dòng → function qua line range đã có sẵn trong graph. Một lần chạy, cache lại.
+
+Cypher [3] mở rộng:
+```cypher
+MATCH (t:Test)-[r:TESTS|COVERS]->(impacted)-[:CALLS*0..3]->(f:Function {qualified_name:$qn})
+WHERE type(r) = 'TESTS' OR r.hits >= $min_hits
+RETURN DISTINCT t.qualified_name, t.file_path, type(r) AS source
+```
+
+**Cái giá phải đo trước khi tin, ngay khi bắt đầu Phase 4 — đừng giả định coverage là cải tiến thuần:**
+
+| Nguồn | median | p95 | % suite |
+|---|---|---|---|
+| TESTS only | 2 | 97 | 5.3% (jsonable_encoder) |
+| COVERS only | ? | ? | ? |
+| Union | ? | ? | ? |
+
+Một integration test có thể chạm hàng trăm function, nên `jsonable_encoder` có thể nhảy từ 125 lên 800+ test. Nếu union đẩy median lên hàng trăm thì luận điểm "12 test thay vì 3000" cần thêm ngưỡng `hits` hoặc giới hạn depth trước khi công bố — đo trước, quyết sau.
+
 ---
 
 ## 6. Test của chính tầng ingestion

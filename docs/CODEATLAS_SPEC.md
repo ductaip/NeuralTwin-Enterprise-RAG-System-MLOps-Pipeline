@@ -107,6 +107,7 @@ impact_analysis (graph) → generate_patch → sandbox apply → run affected te
 (:File)     -[:IMPORTS {alias}]->(:Module)
 (:Class)    -[:INHERITS]->       (:Class)
 (:Test)     -[:TESTS]->          (:Function)
+(:Test)     -[:COVERS {hits}]->  (:Function)   // Phase 4, xem mục "Bốn điều chỉnh"
 
 // ===== INDEXES (bắt buộc) =====
 CREATE INDEX fn_qn   IF NOT EXISTS FOR (f:Function) ON (f.qualified_name);
@@ -114,13 +115,17 @@ CREATE INDEX cls_qn  IF NOT EXISTS FOR (c:Class)    ON (c.qualified_name);
 CREATE INDEX file_p  IF NOT EXISTS FOR (f:File)     ON (f.path);
 ```
 
-### Ba điều chỉnh sau Phase 1 (đã đo, không phải giả định)
+### Bốn điều chỉnh sau Phase 1 (đã đo, không phải giả định)
 
 **1. `CALLS` có thể trỏ vào `:Class`.** `MyClass()` được resolve về `MyClass.__init__`; khi class không định nghĩa `__init__` thì edge trỏ thẳng vào node `Class`. Bỏ edge đó thì impact analysis mù với **mọi** lời gọi khởi tạo — trên fastapi, `FastAPI.__init__` có fan-in 720, tức nếu bỏ thì mất đúng quan hệ dày nhất trong repo. Nhất quán với nguyên tắc recall-first.
 
 **2. Ngưỡng confidence là tham số, không hardcode.** Mọi truy vấn nhận `$min_confidence`. Mặc định: `0.5` cho chọn test (thiếu edge → bỏ sót test → bug lọt production), `0.9` cho fan-in/dead-code (ở đó nhiễu mới là cái hại). Xem `settings.CALL_EDGE_MIN_CONFIDENCE_*`.
 
 **3. `qualified_name` theo ngữ nghĩa `__qualname__`**, kể cả `<locals>`: `pkg.mod.outer.<locals>.inner`. Xấu trong Cypher nhưng bắt buộc vì đây là khoá `MERGE` — hai hàm `inner` khác nhau trùng khoá thì graph gộp âm thầm, không báo lỗi, chỉ trả lời sai.
+
+**4. `TESTS` không đủ — cần `COVERS` bổ sung ở Phase 4.** Đo trên fastapi: **81% test node cô lập**, không có quan hệ `TESTS` nào. Nguyên nhân: test đi qua ranh giới HTTP (`client.get("/")`) thì chuỗi `CALLS` đứt tại `TestClient` (external) — static call graph không bắc được qua dynamic dispatch của một HTTP client. Test gọi thẳng hàm thì `TESTS` đúng (precision cao, đã kiểm bằng mắt); test integration thì không (recall thấp).
+
+`COVERS {hits}` là quan hệ thứ hai, lấy từ `coverage run --context=test`, **không gộp** với `TESTS` — hai nguồn có đặc tính ngược nhau (`TESTS`: precision cao/recall thấp; `COVERS`: recall cao/precision thấp), giữ tách để Phase 5 đo riêng đóng góp từng nguồn (Bảng C thêm hàng). Xem `docs/PHASE1_RESULTS.md` §5 cho số đo đầy đủ và thiết kế chi tiết.
 
 ### Cypher lõi
 
@@ -135,8 +140,14 @@ RETURN DISTINCT impacted.qualified_name, min(length(path)) AS distance
 ORDER BY distance;
 
 // [3] Tập test tối thiểu cần chạy  ← TRUY VẤN QUAN TRỌNG NHẤT
+// Phase 1: chỉ TESTS. Phase 4 trở đi: hợp nhất với COVERS (xem điều chỉnh 4 ở trên).
 MATCH (t:Test)-[:TESTS]->(impacted:Function)-[:CALLS*0..3]->(f:Function {qualified_name:$qn})
 RETURN DISTINCT t.qualified_name, t.file_path;
+
+// [3'] Phase 4 — bản mở rộng với COVERS
+MATCH (t:Test)-[r:TESTS|COVERS]->(impacted)-[:CALLS*0..3]->(f:Function {qualified_name:$qn})
+WHERE type(r) = 'TESTS' OR r.hits >= $min_hits
+RETURN DISTINCT t.qualified_name, t.file_path, type(r) AS source;
 
 // [4] Fan-in cao — điểm nghẽn kiến trúc
 MATCH (f:Function)<-[:CALLS]-(caller)
@@ -342,13 +353,15 @@ Cột LOC (số dòng orchestration code) cho thấy chi phí thật của frame
 
 ### Bảng C — Test selection
 
-| | Full suite | Graph-selected |
-|---|---|---|
-| Số test chạy | | |
-| Thời gian | | |
-| Bug bắt được | | |
+| | Full suite | Graph-selected (TESTS only) | Graph-selected (COVERS only) | Graph-selected (Union) |
+|---|---|---|---|---|
+| Số test chạy | | | | |
+| Thời gian | | | | |
+| Bug bắt được | | | | |
 
 Cột cuối quan trọng: nếu graph-selected bỏ sót bug thì phải nói ra. **Kết quả âm cũng là kết quả.**
+
+Ba cột graph-selected tách theo nguồn quan hệ, không gộp làm một — đo ở Phase 1 trên fastapi cho thấy `TESTS` (suy từ AST) chỉ phủ **19.2%** test node (81% cô lập vì test đi qua ranh giới HTTP), trong khi `COVERS` (từ coverage run) recall cao hơn hẳn nhưng chưa biết cái giá về số test chạy — đo bảng median/p95/%suite cho cả ba nguồn **trước khi** công bố con số "N thay vì M test" ra bên ngoài. Chi tiết thiết kế và số đo ở `docs/PHASE1_RESULTS.md` §5.
 
 ## 3.4 Ngân sách token
 

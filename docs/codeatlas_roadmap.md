@@ -35,9 +35,9 @@ Phase 4 là thứ tạo ấn tượng mạnh nhất, nhưng Phase 5 (eval) mới
 
 ---
 
-# ⚠️ Đính chính sau Phase 0/0.5 — đọc trước khi vào bất kỳ phase nào
+# ⚠️ Đính chính sau Phase 0/0.5/1 — đọc trước khi vào bất kỳ phase nào
 
-Ba điều dưới đây làm sai lệch prompt gốc. Prompt các phase sau vẫn giữ nguyên văn để lưu vết, nhưng chỗ nào mâu thuẫn thì mục này thắng.
+Các điều dưới đây làm sai lệch prompt gốc. Prompt các phase sau vẫn giữ nguyên văn để lưu vết, nhưng chỗ nào mâu thuẫn thì mục này thắng.
 
 **1. Không còn custom ReAct loop để kế thừa.**
 Loop trong NeuralTwin là mock — `_mock_solve_loop()`, `use_mock_llm` mặc định `True`, tool trả string hardcode theo keyword. Đã xoá hẳn ở Phase 0.5. Nên câu "GIỮ LẠI custom ReAct loop" ở Phase 0 mục 4 và Phase 3 mục 7 là **sai**: Phase 3 phải **viết mới cả hai** orchestrator, dùng chung tool + chung retrieval layer. Xem `CODEATLAS_SPEC.md` §3.3 Bảng B.
@@ -47,6 +47,9 @@ Sau Phase 0.5: `pytest` xanh 9/9 — nhưng 9 test đó chỉ phủ `clean_text`
 
 **3. Mock trong `rag/` vẫn còn, và đó là cố ý.**
 Phase 0.5 chỉ xoá mock ở `agents/` (bằng cách xoá cả 2 file) và gỡ `MOCK_LLM=true` hardcode khỏi `docker-compose.yml`/`.env.example`. Nhánh mock trong 6 file `application/rag/*`, `ai_facade.py`, và `graph/ingestor.py` **vẫn nguyên** — xoá ngay thì `/rag` chết mà chưa có gì thay thế. **Phase 2 mới là chỗ xoá**, khi `GroqProvider`/`ModalVLLMProvider` đã có. Cổng chặn `grep -ri "mock" codeatlas/` phải rỗng chỉ áp dụng từ **cuối Phase 2** trở đi, không phải bây giờ.
+
+**4. `TESTS` không đủ để chọn test — Phase 4 BẮT BUỘC bổ sung `COVERS`.**
+Đo trên `fastapi` ở Phase 1: **81% test node cô lập**, không có quan hệ `TESTS` nào, vì test đi qua ranh giới HTTP (`client.get(...)`) làm chuỗi `CALLS` đứt tại `TestClient` (external). Quan hệ `TESTS` (từ AST) có precision cao nhưng recall thấp với integration test — đúng hướng nguy hiểm mà cả dự án đồng ý tránh (thiếu test → bug lọt production). Phase 4 phải thêm `(:Test)-[:COVERS {hits}]->(:Function)` từ `coverage run --context=test`, **giữ tách khỏi `TESTS`** (không gộp), và đo bảng median/p95/%suite cho cả ba nguồn (TESTS-only / COVERS-only / Union) **trước khi** dùng con số "N thay vì M test" để trình bày. Xem `CODEATLAS_SPEC.md` §2.2 mục "Bốn điều chỉnh" và §3.3 Bảng C; chi tiết đầy đủ ở `docs/PHASE1_RESULTS.md` §5.
 
 ---
 
@@ -296,10 +299,23 @@ impact_analysis -> generate_patch -> sandbox_apply -> run_tests
 === NODE ===
 
 1. `impact_analysis`
-   Cypher [2] + [3] trong spec. Xuất ra:
+   Cypher [2] + [3'] trong spec (bản mở nhận cả TESTS lẫn COVERS — KHÔNG
+   dùng [3] gốc, nó chỉ đọc TESTS và bỏ sót 81% test theo số đo Phase 1).
+   Xuất ra:
    - impacted_symbols: hàm bị ảnh hưởng, kèm distance
    - affected_tests: TẬP TEST TỐI THIỂU cần chạy
-   Log rõ: chọn N test trong tổng số M test của repo.
+
+   BƯỚC BẮT BUỘC TRƯỚC KHI DÙNG SỐ NÀY Ở BẤT KỲ ĐÂU: chạy
+   `coverage run --context=test` một lần trên repo mẫu, nạp
+   `(:Test)-[:COVERS {hits}]->(:Function)` vào graph (tách khỏi TESTS,
+   không gộp — xem SPEC §2.2 mục "Bốn điều chỉnh"). Đo bảng
+   median/p95/%suite cho ba nguồn TESTS-only / COVERS-only / Union.
+   Nếu Union đẩy median lên hàng trăm thì thêm ngưỡng $min_hits hoặc
+   giới hạn depth TRƯỚC khi báo cáo N/M — đừng giả định COVERS là
+   cải tiến thuần.
+
+   Log rõ: chọn N test trong tổng số M test của repo, VÀ nguồn nào
+   (TESTS/COVERS/Union) tạo ra N đó.
    Con số N/M này là metric quan trọng nhất của phase.
 
 2. `generate_patch`
