@@ -52,3 +52,40 @@ class SelfQueryTemplate(PromptTemplateFactory):
 
     def create_template(self) -> PromptTemplate:
         return PromptTemplate(template=self.prompt, input_variables=["question"])
+
+
+class ContextualEnrichmentTemplate(PromptTemplateFactory):
+    """One-sentence description of a chunk for contextual retrieval (spec §2.5)."""
+
+    prompt: str = """You are documenting a codebase. Given a function/method and facts about
+    where it lives in the codebase, write ONE short sentence (max 30 words) describing what
+    module it belongs to, its role, and who calls it. Output only the sentence, no preamble.
+
+    Symbol: {qualified_name}
+    Graph facts: {graph_context}
+    Code:
+    {code}
+
+    One-sentence context:"""
+
+    def create_template(self) -> PromptTemplate:
+        return PromptTemplate(
+            template=self.prompt, input_variables=["qualified_name", "graph_context", "code"]
+        )
+
+
+class CodeHydeTemplate(PromptTemplateFactory):
+    """HyDE for code: generate a hypothetical Python snippet that would answer the
+    question, then embed *that* — code embeds closer to code than prose does."""
+
+    prompt: str = """You are a senior Python engineer. Given a question about a codebase,
+    write a short, plausible Python code snippet (function or class, with a docstring)
+    that would answer it — as if it were the actual implementation. Do not explain, do
+    not use markdown fences, output only the code.
+
+    Question: {question}
+
+    Hypothetical code:"""
+
+    def create_template(self) -> PromptTemplate:
+        return PromptTemplate(template=self.prompt, input_variables=["question"])

@@ -4,3 +4,7 @@ class LLMTwinException(Exception):
 
 class ImproperlyConfigured(LLMTwinException):
     pass
+
+
+class LLMGenerationError(LLMTwinException):
+    pass

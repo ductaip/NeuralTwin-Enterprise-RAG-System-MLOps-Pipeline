@@ -149,6 +149,18 @@ def main(argv: list[str] | None = None) -> int:
     parser.add_argument("--commit", default=None, help="Checkout this commit before indexing")
     parser.add_argument("--repo-id", default=None)
     parser.add_argument("--no-write", action="store_true", help="Skip Neo4j; analyse only")
+    parser.add_argument("--no-qdrant", action="store_true", help="Skip embedding chunks into Qdrant")
+    parser.add_argument(
+        "--contextual",
+        action="store_true",
+        help=(
+            "Enable contextual retrieval (LLM-generated context sentence per chunk, "
+            "spec §2.5). OFF by default: this is one LLM call per chunk, and Groq's "
+            "free tier (1000 req/day) is smaller than most repos' chunk count. Deploy "
+            "scripts/deploy_modal_vllm.py and set MODAL_VLLM_BASE_URL first for "
+            "full-repo runs."
+        ),
+    )
     parser.add_argument("--report-dir", default=".", help="Where unresolved_report.json goes")
     parser.add_argument("--max-hops", type=int, default=3)
     args = parser.parse_args(argv)
@@ -158,10 +170,11 @@ def main(argv: list[str] | None = None) -> int:
 
     try:
         parser_impl = PARSERS[args.lang]()
-        modules = []
+        module_pairs = []
         for source in loaded.files:
             if parser_impl.can_parse(source.path):
-                modules.append(parser_impl.parse(source))
+                module_pairs.append((source, parser_impl.parse(source)))
+        modules = [parsed for _source, parsed in module_pairs]
 
         failed = [m for m in modules if m.parse_error]
         if failed:
@@ -212,6 +225,33 @@ def main(argv: list[str] | None = None) -> int:
                 url=args.repo if args.repo.startswith("http") else "",
                 commit_sha=loaded.commit_sha,
                 language=args.lang,
+            )
+
+        if not args.no_qdrant:
+            from codeatlas.ingestion.qdrant_writer import QdrantChunkWriter
+
+            good_pairs = [(s, p) for s, p in module_pairs if not p.parse_error]
+            symbols_by_qn = {s.qualified_name: s for s in symbols}
+
+            enricher = None
+            if args.contextual:
+                from codeatlas.application.rag.contextual_enrichment import ContextualEnricher
+
+                enricher = ContextualEnricher()
+
+            qdrant_started = time.perf_counter()
+            writer = QdrantChunkWriter(enricher=enricher)
+            qdrant_stats = writer.write(
+                repo_id=loaded.repo_id,
+                commit_sha=loaded.commit_sha,
+                language=args.lang,
+                modules=good_pairs,
+                symbols_by_qn=symbols_by_qn,
+            )
+            qdrant_elapsed = time.perf_counter() - qdrant_started
+            print(
+                f"  Qdrant          {qdrant_stats.chunks_written} chunk "
+                f"({qdrant_elapsed:.1f}s)"
             )
     finally:
         if loaded.cleanup_dir and loaded.cleanup_dir.exists():

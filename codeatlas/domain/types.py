@@ -13,3 +13,5 @@ class DataCategory(StrEnum):
     POSTS = "posts"
     ARTICLES = "articles"
     REPOSITORIES = "repositories"
+
+    CODE_CHUNKS = "code_chunks"

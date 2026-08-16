@@ -1,13 +1,11 @@
 import opik
-from langchain_openai import ChatOpenAI
 from loguru import logger
 
 from codeatlas.application import utils
+from codeatlas.application.utils.llm_factory import get_llm
 from codeatlas.domain.documents import UserDocument
 from codeatlas.domain.queries import Query
-from codeatlas.settings import settings
 
-from codeatlas.application.utils.llm_factory import get_llm
 from .base import RAGStep
 from .prompt_templates import SelfQueryTemplate
 
@@ -15,16 +13,12 @@ from .prompt_templates import SelfQueryTemplate
 class SelfQuery(RAGStep):
     @opik.track(name="SelfQuery.generate")
     def generate(self, query: Query) -> Query:
-        if self._mock:
-            return query
-
-        prompt = SelfQueryTemplate().create_template()
+        prompt = SelfQueryTemplate().create_template().format(question=query.content)
         model = get_llm(temperature=0)
 
-        chain = prompt | model
-
-        response = chain.invoke({"question": query})
-        user_full_name = response.content.strip("\n ")
+        response = model.invoke(prompt)
+        content = response.content if hasattr(response, "content") else str(response)
+        user_full_name = content.strip("\n ")
 
         if user_full_name == "none":
             return query

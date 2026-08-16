@@ -15,8 +15,8 @@ Design decisions
   domain objects and infrastructure services to fulfil use-cases.
 * **Async-first** – every public method is ``async`` so it can be called from
   FastAPI route handlers without blocking the event loop.
-* **Config-driven** – automatically selects the correct LLM backend (Ollama /
-  vLLM / OpenAI / Mock) based on ``codeatlas.settings``.
+* **Config-driven** – automatically selects the correct LLM backend (Groq /
+  Modal+vLLM / Ollama / OpenAI) based on ``codeatlas.settings``.
 """
 
 from __future__ import annotations
@@ -30,11 +30,10 @@ from loguru import logger
 
 from codeatlas.domain.inference import (
     ReasoningStep,
-    ReasoningStepsResponse,
     ReasoningStepType,
+    ReasoningStepsResponse,
 )
 from codeatlas.settings import settings
-
 
 # ---------------------------------------------------------------------------
 # Constants
@@ -98,12 +97,8 @@ class CodeAtlasFacade:
     # ------------------------------------------------------------------ #
 
     def __init__(self) -> None:
-        self._mock: bool = settings.MOCK_LLM
         self._model_id: str = self._resolve_model_id()
-        logger.info(
-            "CodeAtlasFacade initialised  "
-            f"(mock={self._mock}, model_id={self._model_id})"
-        )
+        logger.info(f"CodeAtlasFacade initialised  (model_id={self._model_id})")
 
     # ------------------------------------------------------------------ #
     #  Public API – existing services (thin delegation)
@@ -122,7 +117,7 @@ class CodeAtlasFacade:
             "Implemented in CodeAtlas roadmap Phase 3 (LangGraph mode QA)."
         )
 
-    async def rag_query(self, query: str, top_k: int = 3) -> str:
+    async def rag_query(self, query: str, repo_id: str, top_k: int = 3) -> str:
         """
         Run the full Hybrid-RAG pipeline (retrieve → rerank → generate)
         and return the final answer string.
@@ -131,6 +126,9 @@ class CodeAtlasFacade:
         ----------
         query:
             User question that should be answered using the knowledge base.
+        repo_id:
+            Repo indexed via `python -m codeatlas.ingest`. Required — there is no
+            single "current" repo to fall back to.
         top_k:
             Number of top-ranked context chunks to include.
 
@@ -139,16 +137,13 @@ class CodeAtlasFacade:
         str
             The LLM-generated answer grounded in retrieved context.
         """
-        import os
-
+        from codeatlas.application.rag.models import format_context
         from codeatlas.application.rag.retriever import ContextRetriever
-        from codeatlas.domain.embedded_chunks import EmbeddedChunk
 
-        is_mock: bool = os.getenv("MOCK_LLM", "false").lower() == "true" or self._mock
-        retriever = ContextRetriever(mock=is_mock)
+        retriever = ContextRetriever(repo_id=repo_id)
 
         documents = await asyncio.to_thread(retriever.search, query, top_k)
-        context: str = EmbeddedChunk.to_context(documents)
+        context: str = format_context(documents)
         answer: str = await asyncio.to_thread(
             self._call_llm_service, query, context
         )
@@ -225,9 +220,14 @@ class CodeAtlasFacade:
 
     @staticmethod
     def _resolve_model_id() -> str:
-        """Return a human-readable model identifier based on current config."""
-        if settings.MOCK_LLM:
-            return "mock-llm"
+        """Return a human-readable model identifier based on current config.
+
+        Mirrors the selection order in `llm_factory.get_llm()`.
+        """
+        if settings.MODAL_VLLM_BASE_URL:
+            return f"modal-vllm/{settings.MODAL_VLLM_MODEL_ID}"
+        if settings.USE_GROQ:
+            return f"groq/{settings.GROQ_MODEL_ID}"
         if settings.USE_VLLM:
             return f"vllm/{settings.VLLM_MODEL_ID}"
         if settings.USE_OLLAMA:
@@ -243,9 +243,6 @@ class CodeAtlasFacade:
         Returns the **raw string** output from the model (expected to be
         a JSON array).
         """
-        if self._mock:
-            return self._mock_reasoning_response(query)
-
         from langchain.schema import HumanMessage, SystemMessage
 
         from codeatlas.application.utils.llm_factory import get_llm
@@ -307,107 +304,24 @@ class CodeAtlasFacade:
 
         return steps
 
-    # -- Mock ---------------------------------------------------------- #
-
-    @staticmethod
-    def _mock_reasoning_response(query: str) -> str:
-        """
-        Return a deterministic JSON string so the full pipeline can be
-        exercised without a live LLM or API key.
-        """
-        return json.dumps(
-            [
-                {
-                    "step_number": 1,
-                    "step_type": "understand",
-                    "title": "Comprehend the User Intent",
-                    "description": (
-                        f'The user is asking: "{query}". '
-                        "First, we identify the core intent, relevant domain "
-                        "(e.g., software engineering, data science), and any "
-                        "implicit constraints such as language, framework, or "
-                        "deployment target."
-                    ),
-                    "confidence": 0.95,
-                },
-                {
-                    "step_number": 2,
-                    "step_type": "plan",
-                    "title": "Design a Solution Strategy",
-                    "description": (
-                        "Break the problem into sub-tasks: "
-                        "(a) gather prerequisite knowledge, "
-                        "(b) identify the best architectural approach, "
-                        "(c) outline implementation steps with concrete "
-                        "libraries or APIs, and "
-                        "(d) define acceptance criteria for the answer."
-                    ),
-                    "confidence": 0.90,
-                },
-                {
-                    "step_number": 3,
-                    "step_type": "execute",
-                    "title": "Produce the Detailed Answer",
-                    "description": (
-                        "Execute each sub-task: write code snippets where "
-                        "applicable, reference authoritative documentation, "
-                        "and assemble a coherent, step-by-step explanation "
-                        "that directly addresses the user's query."
-                    ),
-                    "confidence": 0.88,
-                },
-                {
-                    "step_number": 4,
-                    "step_type": "verify",
-                    "title": "Validate Correctness & Completeness",
-                    "description": (
-                        "Cross-check the generated answer: verify code "
-                        "compiles, confirm facts against known sources, "
-                        "ensure no hallucinated libraries or APIs, and "
-                        "confirm the response fully answers the original "
-                        "query without omissions."
-                    ),
-                    "confidence": 0.92,
-                },
-            ],
-            indent=2,
-        )
-
     # -- Existing RAG LLM call (reused from inference_pipeline_api) ---- #
 
     @staticmethod
     def _call_llm_service(query: str, context: str) -> str:
-        """Thin wrapper over the existing LLM call logic."""
-        import os
+        """Backend selection lives in `get_llm()` (Groq / Modal+vLLM / Ollama / OpenAI,
+        per spec §2.6) — this is just the prompt assembly."""
+        from langchain.schema import HumanMessage, SystemMessage
 
-        if os.getenv("MOCK_LLM", "false").lower() == "true" and not settings.USE_OLLAMA:
-            return (
-                "This is a simulated response.  The RAG system retrieved "
-                "relevant documents, but the actual LLM call was skipped "
-                "to save API costs."
-            )
+        from codeatlas.application.utils.llm_factory import get_llm
 
-        if settings.USE_OLLAMA:
-            from langchain.schema import HumanMessage, SystemMessage
-
-            from codeatlas.application.utils.llm_factory import get_llm
-
-            llm = get_llm()
-            messages = [
-                SystemMessage(
-                    content=(
-                        "You are a helpful assistant. Use the following "
-                        f"context to answer the user query.\n\nContext:\n{context}"
-                    )
-                ),
-                HumanMessage(content=query),
-            ]
-            return llm.invoke(messages).content
-
-        # SageMaker inference (codeatlas.model.inference) was removed in
-        # Phase 0.5 along with the rest of the finetuning/SageMaker
-        # subsystem. Replaced by GroqProvider / ModalVLLMProvider in Phase 2.
-        raise NotImplementedError(
-            "No LLM backend configured (mock/Ollama only for now). "
-            "SageMaker fallback removed; Groq/vLLM providers land in Phase 2."
-        )
+        llm = get_llm()
+        messages = [
+            SystemMessage(
+                content=(
+                    "You are a helpful assistant. Use the following "
+                    f"context to answer the user query.\n\nContext:\n{context}"
+                )
+            ),
+            HumanMessage(content=query),
+        ]
+        return llm.invoke(messages).content

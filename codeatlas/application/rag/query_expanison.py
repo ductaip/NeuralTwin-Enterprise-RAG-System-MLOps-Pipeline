@@ -1,11 +1,8 @@
 import opik
-from langchain_openai import ChatOpenAI
 from loguru import logger
 
-from codeatlas.domain.queries import Query
-from codeatlas.settings import settings
-
 from codeatlas.application.utils.llm_factory import get_llm
+from codeatlas.domain.queries import Query
 
 from .base import RAGStep
 from .prompt_templates import QueryExpansionTemplate
@@ -16,17 +13,12 @@ class QueryExpansion(RAGStep):
     def generate(self, query: Query, expand_to_n: int) -> list[Query]:
         assert expand_to_n > 0, f"'expand_to_n' should be greater than 0. Got {expand_to_n}."
 
-        if self._mock:
-            return [query for _ in range(expand_to_n)]
-
         query_expansion_template = QueryExpansionTemplate()
-        prompt = query_expansion_template.create_template(expand_to_n - 1)
+        prompt = query_expansion_template.create_template(expand_to_n - 1).format(question=query.content)
         model = get_llm(temperature=0)
 
-        chain = prompt | model
-
-        response = chain.invoke({"question": query})
-        result = response.content
+        response = model.invoke(prompt)
+        result = response.content if hasattr(response, "content") else str(response)
 
         queries_content = result.strip().split(query_expansion_template.separator)
 

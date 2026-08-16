@@ -1,24 +1,22 @@
 import asyncio
-import os
-import time
 from typing import AsyncGenerator
 
 import opik
-from loguru import logger
-from fastapi import FastAPI, HTTPException, Request, Depends
-from fastapi.responses import StreamingResponse, Response
+from fastapi import Depends, FastAPI, HTTPException
+from fastapi.responses import StreamingResponse
 from opik import opik_context
 from pydantic import BaseModel, Field
 
 from codeatlas import settings
+from codeatlas.application.rag.models import format_context
 from codeatlas.application.rag.retriever import ContextRetriever
 from codeatlas.application.utils import misc
-from codeatlas.domain.embedded_chunks import EmbeddedChunk
+from codeatlas.application.utils.llm_factory import get_llm
+from codeatlas.infrastructure.monitoring.decorators import track_request_metrics
+from codeatlas.infrastructure.monitoring.metrics import metrics_endpoint
 from codeatlas.infrastructure.opik_utils import configure_opik
 from codeatlas.infrastructure.security.jwt import verify_token
 from codeatlas.infrastructure.security.rate_limiter import rate_limit_dependency
-from codeatlas.infrastructure.monitoring.decorators import track_request_metrics
-from codeatlas.infrastructure.monitoring.metrics import metrics_endpoint
 
 configure_opik()
 
@@ -32,6 +30,7 @@ app.include_router(ai_router)
 
 class QueryRequest(BaseModel):
     query: str = Field(..., min_length=1, max_length=1000, description="The user query.")
+    repo_id: str = Field(..., description="Repo indexed via `python -m codeatlas.ingest`.")
     stream: bool = False
 
 
@@ -49,47 +48,38 @@ async def metrics():
 
 @opik.track
 def call_llm_service(query: str, context: str | None) -> str:
-    # MOCK MODE FOR PORTFOLIO
-    if os.getenv("MOCK_LLM", "false").lower() == "true" and not settings.USE_OLLAMA:
-        logger.info("Using MOCK LLM response.")
-        return "This is a simulated response. The RAG system retrieved relevant documents, but the actual LLM call was skipped to save AWS costs. In a production environment, this would call Llama 3 on SageMaker."
+    """Backend selection (Groq / Modal+vLLM / Ollama / OpenAI) lives in `get_llm()`,
+    per spec §2.6 — this function no longer decides that itself."""
+    from langchain.schema import HumanMessage, SystemMessage
 
-    if settings.USE_OLLAMA:
-        from codeatlas.application.utils.llm_factory import get_llm
-        from langchain.schema import HumanMessage, SystemMessage
-        
-        logger.info(f"Using Ollama Model: {settings.OLLAMA_MODEL_ID}")
-        llm = get_llm()
-        
-        # Simple invoke for local testing
-        messages = [
-            SystemMessage(content=f"You are a helpful assistant. Use the following context to answer the user query.\n\nContext:\n{context}"),
-            HumanMessage(content=query)
-        ]
-        return llm.invoke(messages).content
+    llm = get_llm()
+    messages = [
+        SystemMessage(
+            content=(
+                "You are CodeAtlas, an assistant answering questions about a codebase. "
+                "Ground every claim in the provided context and cite it as "
+                "[file.py:12-30]. If the context does not contain the answer, say so "
+                "explicitly — never invent a citation.\n\nContext:\n" + (context or "")
+            )
+        ),
+        HumanMessage(content=query),
+    ]
+    return llm.invoke(messages).content
 
-    # SageMaker inference (codeatlas.model.inference) was removed in
-    # Phase 0.5 along with the rest of the finetuning/SageMaker subsystem.
-    # Replaced by GroqProvider / ModalVLLMProvider in Phase 2.
-    raise NotImplementedError(
-        "No LLM backend configured (mock/Ollama only for now). "
-        "SageMaker fallback removed; Groq/vLLM providers land in Phase 2."
-    )
 
-async def stream_rag(query: str) -> AsyncGenerator[str, None]:
+async def stream_rag(query: str, repo_id: str) -> AsyncGenerator[str, None]:
     """
     Simulates streaming response for the RAG pipeline.
     In a real scenario, this would hook into the LLM's streaming callback.
     """
-    is_mock = os.getenv("MOCK_LLM", "false").lower() == "true"
     # 1. Retrieve
-    retriever = ContextRetriever(mock=is_mock)
+    retriever = ContextRetriever(repo_id=repo_id)
     documents = retriever.search(query, k=3)
-    context = EmbeddedChunk.to_context(documents)
-    
+    context = format_context(documents)
+
     # 2. Generate (Simulated Stream)
     full_response = call_llm_service(query, context)
-    
+
     tokens = full_response.split(" ")
     for token in tokens:
         yield f"{token} "
@@ -97,11 +87,10 @@ async def stream_rag(query: str) -> AsyncGenerator[str, None]:
 
 
 @opik.track
-def rag(query: str) -> str:
-    is_mock = os.getenv("MOCK_LLM", "false").lower() == "true"
-    retriever = ContextRetriever(mock=is_mock)
+def rag(query: str, repo_id: str) -> str:
+    retriever = ContextRetriever(repo_id=repo_id)
     documents = retriever.search(query, k=3)
-    context = EmbeddedChunk.to_context(documents)
+    context = format_context(documents)
 
     answer = call_llm_service(query, context)
 
@@ -125,9 +114,11 @@ def rag(query: str) -> str:
 async def rag_endpoint(request: QueryRequest):
     try:
         if request.stream:
-            return StreamingResponse(stream_rag(request.query), media_type="text/event-stream")
-            
-        answer = rag(query=request.query)
+            return StreamingResponse(
+                stream_rag(request.query, request.repo_id), media_type="text/event-stream"
+            )
+
+        answer = rag(query=request.query, repo_id=request.repo_id)
 
         return {"answer": answer}
     except Exception as e:

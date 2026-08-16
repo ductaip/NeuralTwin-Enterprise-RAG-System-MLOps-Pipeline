@@ -14,9 +14,6 @@ class PromptTemplateFactory(ABC, BaseModel):
 
 
 class RAGStep(ABC):
-    def __init__(self, mock: bool = False) -> None:
-        self._mock = mock
-
     @abstractmethod
     def generate(self, query: Query, *args, **kwargs) -> Any:
         pass

@@ -1,9 +1,8 @@
-import os
-from typing import Any, Dict, List, Optional
+from typing import Any, Dict, List
 
+from langchain_core.messages import AIMessage
 from loguru import logger
 from openai import OpenAI
-from langchain_core.messages import BaseMessage, HumanMessage, SystemMessage, AIMessage
 
 from codeatlas.domain.exceptions import LLMGenerationError
 from codeatlas.settings import settings

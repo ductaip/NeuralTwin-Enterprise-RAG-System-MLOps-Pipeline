@@ -1,0 +1,365 @@
+[33mRetrying (Retry(total=9, connect=4, read=8, redirect=3, status=10)) after connection broken by 'NewConnectionError('<urllib3.connection.HTTPConnection object at 0x7fe664d62a90>: Failed to establish a new connection: [Errno 111] Connection refused')': /api/v1/info[0m
+[33mRetrying (Retry(total=8, connect=3, read=8, redirect=3, status=10)) after connection broken by 'NewConnectionError('<urllib3.connection.HTTPConnection object at 0x7fe6675b4510>: Failed to establish a new connection: [Errno 111] Connection refused')': /api/v1/info[0m
+[33mRetrying (Retry(total=7, connect=2, read=8, redirect=3, status=10)) after connection broken by 'NewConnectionError('<urllib3.connection.HTTPConnection object at 0x7fe664c7e350>: Failed to establish a new connection: [Errno 111] Connection refused')': /api/v1/info[0m
+[33mRetrying (Retry(total=6, connect=1, read=8, redirect=3, status=10)) after connection broken by 'NewConnectionError('<urllib3.connection.HTTPConnection object at 0x7fe664eee650>: Failed to establish a new connection: [Errno 111] Connection refused')': /api/v1/info[0m
+[33mRetrying (Retry(total=5, connect=0, read=8, redirect=3, status=10)) after connection broken by 'NewConnectionError('<urllib3.connection.HTTPConnection object at 0x7fe664cb9610>: Failed to establish a new connection: [Errno 111] Connection refused')': /api/v1/info[0m
+
+==========================================================================================
+[1] QUERY: how does jsonable_encoder convert pydantic models to JSON   (13.3s)
+==========================================================================================
+HyDE snippet (first 150 chars): 'def jsonable_encoder(obj):\n    """\n    Convert a Pydantic model to a JSON-serializable dictionary.\n\n    This function recursively traverses the object'
+
+-- DENSE top-5 --
+   0.743  fastapi._compat.v2.ModelField.serialize_json
+   0.713  tests.test_jsonable_encoder.test_encode_model_with_default_in_dict_and_list
+   0.695  tests.test_jsonable_encoder.test_encode_pydantic_undefined
+   0.692  tests.test_jsonable_encoder.test_encode_model_with_default
+   0.678  tests.test_jsonable_encoder.test_encode_custom_json_encoders_model_pydanticv2
+-- SPARSE top-5 --
+   34.611  fastapi.encoders.jsonable_encoder
+   33.898  fastapi.encoders.jsonable_encoder
+   33.680  fastapi.encoders.jsonable_encoder
+   33.503  fastapi.encoders.jsonable_encoder
+   32.625  fastapi.encoders.jsonable_encoder
+-- GRAPH top-5 --
+   1.000  fastapi.encoders.jsonable_encoder
+   0.800  tests.test_multi_body_errors.test_jsonable_encoder_requiring_error
+   0.600  tests.test_jsonable_encoder.test_encode_custom_json_encoders_model_pydanticv2
+   0.600  tests.test_jsonable_encoder.test_json_encoder_error_with_pydanticv1
+   0.400  fastapi.openapi.models.EmailStr.__get_pydantic_json_schema__
+-- FUSED (RRF k=60) top-5 --
+   fastapi.encoders.jsonable_encoder  (source=sparse)
+   tests.test_jsonable_encoder.test_encode_custom_json_encoders_model_pydanticv2  (source=dense)
+   tests.test_jsonable_encoder.test_json_encoder_error_with_pydanticv1  (source=dense)
+   tests.test_jsonable_encoder.test_encode_model_with_default  (source=sparse)
+   tests.test_jsonable_encoder.test_encode_pydantic_undefined  (source=sparse)
+-- FINAL (cross-encoder reranked) --
+   fastapi.encoders.jsonable_encoder  [fastapi/encoders.py:356-366]
+   tests.test_jsonable_encoder.test_encode_custom_json_encoders_model_pydanticv2  [tests/test_jsonable_encoder.py:140-156]
+   tests.test_jsonable_encoder.test_json_encoder_error_with_pydanticv1  [tests/test_jsonable_encoder.py:159-169]
+   tests.test_jsonable_encoder.test_encode_model_with_default_in_dict_and_list  [tests/test_jsonable_encoder.py:205-216]
+   tests.test_jsonable_encoder.test_encode_pydantic_undefined  [tests/test_jsonable_encoder.py:325-327]
+
+==========================================================================================
+[2] QUERY: where is dependency injection resolved for path operations   (5.7s)
+==========================================================================================
+HyDE snippet (first 150 chars): 'class PathResolver:\n    def __init__(self, dependency_container):\n        """\n        Resolves dependency injection for path operations.\n\n        Args'
+
+-- DENSE top-5 --
+   0.630  tests.memory_benchmarks.test_dependency_graph._create_app
+   0.628  tests.memory_benchmarks.test_dependency_graph._create_app.<locals>.create_dependency
+   0.612  tests.memory_benchmarks.test_route_dependency_graph._create_app.<locals>.create_dependency
+   0.611  fastapi.routing._FrontendRouteGroup.__init__
+   0.607  tests.benchmarks.utils.create_openapi_app.<locals>.create_dependency
+-- SPARSE top-5 --
+   17.568  fastapi.routing._FrontendStaticFiles._get_resolved_directory
+   14.773  fastapi.routing._FrontendStaticFiles._check_fallback_file
+   13.747  fastapi.routing._FrontendStaticFiles._fallback_response
+   12.982  fastapi.routing.APIRouter.frontend
+   12.877  fastapi.routing._resolve_frontend_check_dir
+-- GRAPH top-5 --
+   1.000  fastapi.applications.FastAPI.frontend
+   1.000  fastapi.routing.APIRouter.frontend
+   0.750  fastapi.param_functions.Security
+   0.750  fastapi.dependencies.utils._get_body_field
+   0.750  tests.test_dependency_contextvars.test_dependency_contextvars
+-- FUSED (RRF k=60) top-5 --
+   fastapi.routing.APIRouter.frontend  (source=sparse)
+   fastapi.applications.FastAPI.frontend  (source=sparse)
+   fastapi.param_functions.Depends  (source=sparse)
+   tests.memory_benchmarks.test_dependency_graph._create_app  (source=dense)
+   fastapi.routing._FrontendStaticFiles._get_resolved_directory  (source=sparse)
+-- FINAL (cross-encoder reranked) --
+   fastapi.security.oauth2.OAuth2PasswordBearer.__init__  [fastapi/security/oauth2.py:442-534]
+   fastapi.param_functions.Depends  [fastapi/param_functions.py:2283-2369]
+   fastapi.param_functions.Security  [fastapi/param_functions.py:2372-2460]
+   fastapi.routing.APIRouter.frontend  [fastapi/routing.py:2630-2717]
+   fastapi.applications.FastAPI.frontend  [fastapi/applications.py:1222-1299]
+
+==========================================================================================
+[3] QUERY: who calls APIRouter.add_api_route   (4.1s)
+==========================================================================================
+HyDE snippet (first 150 chars): 'class APIRouter:\n    def add_api_route(self, path: str, endpoint: callable, methods: list[str]) -> None:\n        """\n        Adds an API route to the '
+
+-- DENSE top-5 --
+   0.726  fastapi.routing.APIRouter.include_router
+   0.726  fastapi.routing.APIRouter.include_router
+   0.726  fastapi.routing.APIRouter.include_router
+   0.726  fastapi.routing.APIRouter.include_router
+   0.726  fastapi.routing.APIRouter.include_router
+-- SPARSE top-5 --
+   29.565  tests.test_router_include_context.test_original_api_route_get_route_handler_is_called_after_inclusion
+   29.541  tests.test_router_include_context.test_original_api_route_subclass_instance_is_called_after_inclusion
+   29.285  tests.test_router_include_context.test_original_api_route_matches_is_called_after_inclusion
+   26.782  tests.test_frontend.test_frontend_dependencies_do_not_run_when_api_route_wins
+   25.385  tests.test_router_include_context.test_live_route_addition_uses_include_metadata_for_runtime_and_openapi
+-- GRAPH top-5 --
+   1.000  fastapi.routing.APIRouter.get
+   1.000  fastapi.routing.APIRouter.post
+   1.000  fastapi.routing.APIRouter.put
+   1.000  fastapi.routing.APIRouter.head
+   1.000  fastapi.routing.APIRouter.options
+-- FUSED (RRF k=60) top-5 --
+   fastapi.routing.APIRouter.include_router  (source=graph)
+   fastapi.applications.FastAPI.__init__  (source=dense)
+   tests.test_router_include_context.test_original_api_route_get_route_handler_is_called_after_inclusion  (source=sparse)
+   fastapi.routing.APIRouter.get  (source=graph)
+   tests.test_router_include_context.test_original_api_route_subclass_instance_is_called_after_inclusion  (source=sparse)
+-- FINAL (cross-encoder reranked) --
+   tests.test_router_include_context.test_original_nested_api_router_subclasses_are_called_after_inclusion  [tests/test_router_include_context.py:497-520]
+   tests.test_router_include_context.test_original_api_route_get_route_handler_is_called_after_inclusion  [tests/test_router_include_context.py:386-415]
+   tests.test_router_include_context.test_original_api_route_subclass_instance_is_called_after_inclusion  [tests/test_router_include_context.py:360-383]
+   tests.test_router_include_context.test_original_api_router_matches_is_called_after_inclusion  [tests/test_router_include_context.py:469-494]
+   tests.test_router_include_context.test_original_api_route_matches_is_called_after_inclusion  [tests/test_router_include_context.py:418-445]
+
+==========================================================================================
+[4] QUERY: how are path parameters validated   (3.7s)
+==========================================================================================
+HyDE snippet (first 150 chars): 'def validate_path_parameters(path: str, params: dict) -> bool:\n    """\n    Validate path parameters against a given path.\n\n    Args:\n    path (str): T'
+
+-- DENSE top-5 --
+   0.627  fastapi._compat.v2.ModelField.validate
+   0.612  tests.test_validation_error_context.test_validation_error_with_only_path
+   0.607  tests.test_response_model_sub_types.test_path_operations
+   0.607  tests.test_tutorial.test_path_operation_configurations.test_tutorial006.test_query_params_str_validations
+   0.594  tests.test_starlette_urlconvertors.test_url_path_for_path_convertor
+-- SPARSE top-5 --
+   11.779  tests.benchmarks.test_general_performance.test_sync_receiving_validated_pydantic_model
+   11.779  tests.benchmarks.test_general_performance.test_async_receiving_validated_pydantic_model
+   10.135  tests.benchmarks.test_general_performance.sync_validated
+   10.064  tests.benchmarks.test_general_performance.async_validated
+   9.344  tests.test_tutorial.test_path_operation_advanced_configurations.test_tutorial006.test_post
+-- GRAPH top-5 --
+   1.000  fastapi.param_functions.Path
+   0.667  fastapi.applications.FastAPI.get
+   0.667  fastapi.param_functions.Depends
+   0.667  fastapi.applications.FastAPI.frontend
+   0.667  fastapi.routing.APIRouter.get
+-- FUSED (RRF k=60) top-5 --
+   fastapi.openapi.docs.get_swagger_ui_html  (source=sparse)
+   tests.test_swagger_ui_escape.test_swagger_ui_parameters_html_chars_are_escaped  (source=sparse)
+   fastapi._compat.v2.ModelField.validate  (source=dense)
+   tests.benchmarks.test_general_performance.test_sync_receiving_validated_pydantic_model  (source=sparse)
+   fastapi.param_functions.Path  (source=graph)
+-- FINAL (cross-encoder reranked) --
+   fastapi.param_functions.Path  [fastapi/param_functions.py:13-354]
+   fastapi.dependencies.utils._get_body_field  [fastapi/dependencies/utils.py:1001-1048]
+   fastapi.applications.FastAPI.get  [fastapi/applications.py:1646-2017]
+   fastapi.routing.APIRouter.get  [fastapi/routing.py:3322-3697]
+   fastapi.applications.FastAPI.post  [fastapi/applications.py:2397-2773]
+
+==========================================================================================
+[5] QUERY: what handles CORS middleware configuration   (3.5s)
+==========================================================================================
+HyDE snippet (first 150 chars): 'class CORSMiddleware:\n    def __init__(self, allow_origins, allow_methods, allow_headers, max_age):\n        """\n        Initialize CORS middleware con'
+
+-- DENSE top-5 --
+   0.663  tests.test_tutorial.test_cors.test_tutorial001.test_cors
+   0.592  fastapi.routing.APIRoute.handle
+   0.539  fastapi.security.oauth2.OAuth2.__call__
+   0.539  fastapi.security.open_id_connect_url.OpenIdConnect.__call__
+   0.521  fastapi.routing.APIRoute.get_route_handler
+-- SPARSE top-5 --
+   9.045  tests.test_ws_router.websocket_middleware
+   9.004  fastapi.applications.FastAPI.middleware
+   9.003  tests.test_frontend.test_app_middleware_still_runs_for_frontend_dependencies
+   8.993  tests.test_frontend.test_app_middleware_still_runs_for_frontend_dependencies.<locals>.record_middleware
+   8.573  fastapi.applications.FastAPI.build_middleware_stack
+-- GRAPH top-5 --
+   1.000  fastapi.applications.FastAPI.middleware
+   1.000  tests.test_compat.test_serialize_sequence_value_with_optional_list
+   1.000  tests.test_custom_middleware_exception.test_custom_middleware_exception_not_raised
+   1.000  tests.test_compat.test_serialize_sequence_value_with_none_first_in_union
+   1.000  tests.test_custom_middleware_exception.run_middleware
+-- FUSED (RRF k=60) top-5 --
+   fastapi.applications.FastAPI.middleware  (source=sparse)
+   tests.test_compat.test_serialize_sequence_value_with_optional_list  (source=sparse)
+   tests.test_custom_middleware_exception.test_custom_middleware_exception_not_raised  (source=sparse)
+   tests.test_dependency_contextvars.custom_middleware  (source=graph)
+   tests.test_frontend.test_app_middleware_still_runs_for_frontend_dependencies  (source=sparse)
+-- FINAL (cross-encoder reranked) --
+   fastapi.applications.FastAPI.build_middleware_stack  [fastapi/applications.py:1020-1068]
+   fastapi.routing.get_request_handler  [fastapi/routing.py:375-760]
+   fastapi.applications.FastAPI.middleware  [fastapi/applications.py:4683-4727]
+   tests.test_ws_router.test_depend_err_middleware  [tests/test_ws_router.py:236-254]
+   tests.test_ws_router.websocket_middleware  [tests/test_ws_router.py:188-207]
+
+==========================================================================================
+[6] QUERY: how does FastAPI generate the OpenAPI schema   (3.6s)
+==========================================================================================
+HyDE snippet (first 150 chars): 'def generate_openapi_schema(app: FastAPI) -> Dict:\n    """\n    Generate the OpenAPI schema for a given FastAPI application.\n\n    This function iterate'
+
+-- DENSE top-5 --
+   0.822  fastapi.applications.FastAPI.openapi
+   0.792  tests.test_application.test_openapi_schema
+   0.787  fastapi.openapi.utils.get_openapi_path
+   0.758  tests.test_response_by_alias.test_openapi_schema
+   0.758  tests.test_openapi_route_extensions.test_openapi_schema
+-- SPARSE top-5 --
+   31.482  fastapi.applications.FastAPI.include_router
+   31.380  fastapi.routing.APIRouter.include_router
+   31.111  fastapi.routing.APIRouter.include_router
+   30.920  fastapi.routing.APIRouter.include_router
+   30.920  fastapi.routing.APIRouter.include_router
+-- GRAPH top-5 --
+   1.000  fastapi.applications.FastAPI.openapi
+   0.571  fastapi.param_functions.Security
+   0.571  fastapi.openapi.docs.get_swagger_ui_html
+   0.571  fastapi.openapi.docs.get_redoc_html
+   0.429  fastapi.security.oauth2.OAuth2.make_not_authenticated_error
+-- FUSED (RRF k=60) top-5 --
+   fastapi.routing.APIRouter.include_router  (source=sparse)
+   fastapi.applications.FastAPI.openapi  (source=sparse)
+   fastapi.applications.FastAPI.include_router  (source=sparse)
+   tests.test_additional_properties_bool.test_openapi_schema  (source=dense)
+   fastapi.openapi.docs.get_swagger_ui_html  (source=sparse)
+-- FINAL (cross-encoder reranked) --
+   fastapi.applications.FastAPI.openapi  [fastapi/applications.py:1070-1103]
+   tests.benchmarks.utils.generate_openapi  [tests/benchmarks/utils.py:49-51]
+   tests.test_tutorial.test_custom_response.test_tutorial006b.test_openapi_schema  [tests/test_tutorial/test_custom_response/test_tutorial006b.py:15-32]
+   tests.test_tutorial.test_custom_response.test_tutorial005.test_openapi_schema  [tests/test_tutorial/test_custom_response/test_tutorial005.py:15-39]
+   tests.test_openapi_route_extensions.test_openapi_schema  [tests/test_openapi_route_extensions.py:22-45]
+
+==========================================================================================
+[7] QUERY: where is request body parsing implemented   (4.4s)
+==========================================================================================
+HyDE snippet (first 150 chars): 'class RequestParser:\n    def __init__(self, request):\n        """\n        Initialize the RequestParser with a request object.\n\n        Args:\n        r'
+
+-- DENSE top-5 --
+   0.684  tests.benchmarks.test_general_performance._bench_post_json.<locals>.do_request
+   0.643  tests.test_multi_query_errors.test_multi_query_incorrect
+   0.643  tests.test_openapi_examples.test_call_api
+   0.635  fastapi.dependencies.utils._get_body_field
+   0.629  tests.test_query.test_query
+-- SPARSE top-5 --
+   11.053  tests.test_multi_body_errors.test_put_incorrect_body_multiple
+   10.279  fastapi.openapi.utils.get_openapi_operation_request_body
+   9.169  tests.test_tutorial.test_body_nested_models.test_tutorial009.test_post_invalid_body
+   9.169  tests.test_tutorial.test_handling_errors.test_tutorial005.test_post_validation_error
+   8.680  fastapi.dependencies.utils.solve_dependencies
+-- GRAPH top-5 --
+   1.000  fastapi.dependencies.utils._get_body_field
+   0.667  fastapi.utils.is_body_allowed_for_status_code
+   0.667  doc_parsing_utils.extract_code_includes
+   0.667  fastapi.datastructures.UploadFile.write
+   0.667  doc_parsing_utils.extract_header_permalinks
+-- FUSED (RRF k=60) top-5 --
+   fastapi.dependencies.utils._get_body_field  (source=sparse)
+   fastapi.openapi.utils.get_openapi_operation_request_body  (source=sparse)
+   tests.test_tutorial.test_body_nested_models.test_tutorial009.test_post_invalid_body  (source=sparse)
+   tests.benchmarks.test_general_performance._bench_post_json.<locals>.do_request  (source=dense)
+   tests.test_multi_body_errors.test_put_incorrect_body_multiple  (source=sparse)
+-- FINAL (cross-encoder reranked) --
+   fastapi.dependencies.utils._get_body_field  [fastapi/dependencies/utils.py:1001-1048]
+   fastapi.openapi.utils.get_openapi_operation_request_body  [fastapi/openapi/utils.py:231-263]
+   fastapi.dependencies.utils.request_body_to_args  [fastapi/dependencies/utils.py:951-998]
+   fastapi.dependencies.utils.solve_dependencies  [fastapi/dependencies/utils.py:687-731]
+   fastapi.routing.get_request_handler  [fastapi/routing.py:375-760]
+
+==========================================================================================
+[8] QUERY: how are background tasks executed after a response   (3.4s)
+==========================================================================================
+HyDE snippet (first 150 chars): 'def execute_background_task(task_id, task_data):\n    """\n    Execute a background task after a response has been sent to the client.\n\n    This functio'
+
+-- DENSE top-5 --
+   0.621  fastapi.background.BackgroundTasks.add_task
+   0.611  background_tasks.tutorial002_py310.send_notification
+   0.603  background_tasks.tutorial002_an_py310.send_notification
+   0.597  background_tasks.tutorial001_py310.send_notification
+   0.596  tests.test_response_dependency.test_background_tasks_with_depends_annotated.<locals>.background_task
+-- SPARSE top-5 --
+   24.502  fastapi.background.BackgroundTasks.add_task
+   23.458  tests.test_response_dependency.test_background_tasks_with_depends_annotated.<locals>.add_background_task
+   23.048  tests.test_response_dependency.test_background_tasks_with_depends_annotated
+   22.194  tests.test_response_dependency.test_background_tasks_with_depends_annotated.<locals>.endpoint
+   21.918  tests.test_frontend.test_frontend_dependency_response_headers_and_background_tasks.<locals>.frontend_dependency
+-- GRAPH top-5 --
+   1.000  fastapi.background.BackgroundTasks.add_task
+   0.750  tests.test_dependency_after_yield_streaming.test_broken_session_stream_no_raise
+   0.750  tests.test_frontend.test_frontend_dependency_response_headers_and_background_tasks
+   0.750  tests.test_dependency_after_yield_raise.test_broken_no_raise
+   0.500  fastapi.openapi.docs.get_redoc_html
+-- FUSED (RRF k=60) top-5 --
+   fastapi.background.BackgroundTasks.add_task  (source=sparse)
+   tests.test_response_dependency.test_background_tasks_with_depends_annotated  (source=sparse)
+   tests.test_response_dependency.test_background_tasks_with_depends_annotated.<locals>.add_background_task  (source=sparse)
+   background_tasks.tutorial001_py310.send_notification  (source=sparse)
+   background_tasks.tutorial002_py310.send_notification  (source=sparse)
+-- FINAL (cross-encoder reranked) --
+   fastapi.background.BackgroundTasks.add_task  [fastapi/background.py:40-61]
+   tests.test_dependency_contextmanager.test_background_tasks  [tests/test_dependency_contextmanager.py:281-293]
+   tests.test_frontend.test_frontend_dependency_response_headers_and_background_tasks  [tests/test_frontend.py:502-523]
+   tests.test_dependency_contextmanager.test_sync_background_tasks  [tests/test_dependency_contextmanager.py:391-399]
+   tests.test_frontend.test_frontend_dependency_response_headers_and_background_tasks.<locals>.frontend_dependency  [tests/test_frontend.py:505-510]
+
+==========================================================================================
+[9] QUERY: what validates the response model before serialization   (4.6s)
+==========================================================================================
+HyDE snippet (first 150 chars): 'class ResponseModelValidator:\n    def __init__(self, response_model):\n        """\n        Initialize the ResponseModelValidator with a response model.'
+
+-- DENSE top-5 --
+   0.678  tests.test_response_model_as_return_annotation.response_model_model1_annotation_model2_return_invalid_dict
+   0.660  tests.test_response_model_as_return_annotation.response_model_model1_annotation_model2_return_dict_with_extra_data
+   0.652  tests.test_response_model_as_return_annotation.response_model_model1_annotation_model2_return_exact_dict
+   0.644  fastapi.routing.serialize_response
+   0.642  tests.test_response_model_as_return_annotation.response_model_none_annotation_return_invalid_dict
+-- SPARSE top-5 --
+   12.338  fastapi._compat.v2.get_definitions
+   12.165  tests.test_sse.slow_async_stream
+   11.002  fastapi.param_functions.Depends
+   10.939  tests.test_dependency_contextvars.test_dependency_contextvars
+   10.469  app_testing.tutorial004_py310.test_read_items
+-- GRAPH top-5 --
+   1.000  fastapi.routing.APIRouter.head
+   0.667  fastapi.encoders.jsonable_encoder
+   0.667  fastapi.background.BackgroundTasks.add_task
+   0.667  fastapi.openapi.docs.get_redoc_html
+   0.667  fastapi.applications.FastAPI.exception_handler
+-- FUSED (RRF k=60) top-5 --
+   fastapi.applications.FastAPI.head  (source=sparse)
+   tests.test_response_model_as_return_annotation.response_model_model1_annotation_model2_return_invalid_dict  (source=dense)
+   fastapi._compat.v2.get_definitions  (source=sparse)
+   fastapi.routing.APIRouter.head  (source=graph)
+   tests.test_response_model_as_return_annotation.response_model_model1_annotation_model2_return_dict_with_extra_data  (source=dense)
+-- FINAL (cross-encoder reranked) --
+   fastapi.applications.FastAPI.post  [fastapi/applications.py:2749-2773]
+   fastapi.applications.FastAPI.head  [fastapi/applications.py:3868-3892]
+   fastapi.applications.FastAPI.patch  [fastapi/applications.py:4246-4270]
+   fastapi.applications.FastAPI.put  [fastapi/applications.py:2371-2395]
+   fastapi.applications.FastAPI.get  [fastapi/applications.py:1993-2017]
+
+==========================================================================================
+[10] QUERY: how does the TestClient send a request to the app   (4.4s)
+==========================================================================================
+HyDE snippet (first 150 chars): 'class TestClient:\n    def __init__(self, app):\n        """\n        Initialize the TestClient with the given app.\n\n        :param app: The application '
+
+-- DENSE top-5 --
+   0.719  tests.test_tutorial.test_graphql.test_tutorial001.get_client
+   0.707  tests.test_schema_extra_examples.test_call_api
+   0.679  tests.test_stringified_annotations_simple.Dep.__call__
+   0.667  tests.test_tutorial.test_header_params.test_tutorial002.test
+   0.667  tests.test_tutorial.test_header_params.test_tutorial003.test
+-- SPARSE top-5 --
+   23.585  openapi_callbacks.tutorial001_py310.create_invoice
+   23.585  tests.test_sub_callbacks.create_invoice
+   21.375  openapi_webhooks.tutorial001_py310.new_subscription
+   20.713  tests.test_webhooks_security.new_subscription
+   19.556  fastapi.openapi.docs.get_swagger_ui_html
+-- GRAPH top-5 --
+   1.000  tests.test_sub_callbacks.create_invoice
+   1.000  openapi_callbacks.tutorial001_py310.create_invoice
+   0.750  tests.test_dependency_yield_scope.test_app_level_dep_scope_request
+   0.750  tests.test_dependency_after_yield_raise.test_broken_no_raise
+   0.750  tests.test_openapi_cache_root_path.test_root_path_does_not_persist_across_requests
+-- FUSED (RRF k=60) top-5 --
+   fastapi.openapi.docs.get_swagger_ui_html  (source=sparse)
+   openapi_callbacks.tutorial001_py310.create_invoice  (source=sparse)
+   tests.test_sub_callbacks.create_invoice  (source=sparse)
+   tests.test_webhooks_security.new_subscription  (source=sparse)
+   tests.test_tutorial.test_graphql.test_tutorial001.get_client  (source=dense)
+-- FINAL (cross-encoder reranked) --
+   tests.test_dependency_yield_scope.test_app_level_dep_scope_request  [tests/test_dependency_yield_scope.py:235-245]
+   tests.test_openapi_cache_root_path.test_root_path_does_not_persist_across_requests  [tests/test_openapi_cache_root_path.py:5-23]
+   tests.test_dependency_after_yield_raise.test_broken_no_raise  [tests/test_dependency_after_yield_raise.py:51-61]
+   tests.test_tutorial.test_settings.test_app01.test_app  [tests/test_tutorial/test_settings/test_app01.py:49-56]
+   tests.test_tutorial.test_advanced_middleware.test_tutorial001.test_middleware  [tests/test_tutorial/test_advanced_middleware/test_tutorial001.py:6-14]

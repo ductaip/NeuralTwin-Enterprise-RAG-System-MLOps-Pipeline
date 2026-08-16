@@ -13,6 +13,7 @@ from dataclasses import dataclass
 
 from loguru import logger
 
+from codeatlas.infrastructure.graph.neo4j_adapter import Neo4jAdapter
 from codeatlas.ingestion.models import (
     CallEdge,
     InheritanceEdge,
@@ -21,7 +22,6 @@ from codeatlas.ingestion.models import (
     SymbolKind,
     TestEdge,
 )
-from codeatlas.infrastructure.graph.neo4j_adapter import Neo4jAdapter
 from codeatlas.settings import settings
 
 INDEX_STATEMENTS = [
