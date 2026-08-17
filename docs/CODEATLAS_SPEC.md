@@ -333,11 +333,14 @@ System:      p50/p95 latency, tokens/query, index time /1k LOC
 | BM25-only | | | | |
 | Graph-only | | | | |
 | Hybrid + RRF | | | | |
+| Hybrid + RRF, không rerank | | | | |
 | + Cross-encoder rerank | | | | |
 | + Contextual retrieval | | | | |
 | **+ Agent routing** | | | | |
 
 **Giả thuyết:** vector-only sập ở Structural/Impact; graph-only sập ở Semantic; chỉ agent routing tốt đều cả ba.
+
+**Hàng "không rerank" thêm sau Phase 2, không phải giả định ban đầu.** Verify 10 câu trên `fastapi` (Phase 2, xem `docs/PHASE2_RESULTS.md` §8) cho thấy cross-encoder rerank **đẩy đáp án đúng ra khỏi top-5** ở câu structural: GraphRetriever tìm đúng `get/post/put/head/options` cho "who calls add_api_route" (confidence 1.0), nhưng rerank thay bằng test file ít liên quan hơn. Nghi ngờ hợp lý: cross-encoder được train trên cặp query-passage văn xuôi, không có tín hiệu để đánh giá đúng structural match. Nếu đúng, "+ Cross-encoder rerank" sẽ **giảm** điểm Structural so với "Hybrid + RRF, không rerank" — một kết quả âm thật, không phải placeholder.
 
 ### Bảng B — Orchestration (đây là bảng biện minh cho LangGraph)
 
@@ -363,18 +366,40 @@ Cột cuối quan trọng: nếu graph-selected bỏ sót bug thì phải nói r
 
 Ba cột graph-selected tách theo nguồn quan hệ, không gộp làm một — đo ở Phase 1 trên fastapi cho thấy `TESTS` (suy từ AST) chỉ phủ **19.2%** test node (81% cô lập vì test đi qua ranh giới HTTP), trong khi `COVERS` (từ coverage run) recall cao hơn hẳn nhưng chưa biết cái giá về số test chạy — đo bảng median/p95/%suite cho cả ba nguồn **trước khi** công bố con số "N thay vì M test" ra bên ngoài. Chi tiết thiết kế và số đo ở `docs/PHASE1_RESULTS.md` §5.
 
-## 3.4 Ngân sách token
+## 3.4 Ngân sách Modal — đã thiết kế lại, giả định $30 ban đầu SAI
 
-| Hạng mục | Token ước tính | Backend |
+⚠️ **Đính chính sau Phase 2:** bảng gốc dưới đây giả định $30 credit. Thực tế đo được: **4 tài khoản Modal, mỗi tài khoản $1** (không phải $30 gộp). L4 ≈ $0.80/giờ → **mỗi tài khoản chỉ mua được ~1 giờ 15 phút GPU**, tổng 4 tài khoản ≈ **5 giờ**, không phải 37 giờ như tính trước. Chênh lệch hơn 7 lần — toàn bộ ước lượng phía dưới phải scale lại theo tỉ lệ, không chỉ đổi một con số.
+
+**Ràng buộc thêm:** deploy + cold start (tải model, load weights) tốn ~10–15 phút mỗi lần và **tính tiền như chạy thật**. Đổi tài khoản = deploy lại = mất 10–15 phút trong ngân sách 1h15m của tài khoản đó. Chiến lược bắt buộc: **một lần deploy phục vụ trọn một khối việc**, không đổi tài khoản giữa chừng một khối.
+
+### Phân bổ 4 tài khoản theo khối việc
+
+| Tài khoản | Khối việc | Ngân sách thời gian |
 |---|---|---|
-| Contextual enrichment (1.500 chunk) | ~1.2M | Modal |
-| QA eval: 60 câu × 7 config × 3 lần (non-agent ~1 call) | ~0.4M | Modal |
-| QA eval: agent config (8 call/câu) | ~1.6M | Modal |
-| Refactor eval: 20 task × 3 vòng × 3 lần | ~1.5M | Modal |
-| Demo | <50K | Groq |
-| **Tổng** | **~4.7M** | |
+| 1 | Contextual enrichment — chỉ `fastapi/` lõi (~500 chunk, không phải 5076 toàn repo, theo quyết định Option A ở Phase 2) | ~1h (15 phút cold start + enrichment) |
+| 2 | QA eval — cấu hình non-agent (Bảng A, không gồm "+ Agent routing") | ~1h15m |
+| 3 | QA eval — cấu hình agent routing (8 tool call/câu, tốn nhất) | ~1h15m |
+| 4 | Refactor eval (Bảng B, C) + dự phòng deploy hỏng | ~1h15m |
 
-L4 trên Modal ≈ $0.80/giờ, $30 credit ≈ 37 giờ. Với Qwen2.5-7B-AWQ, ~4.7M token nằm gọn trong vài giờ chạy. **Có cache thì chạy lại gần như miễn phí.**
+### Quy mô eval cắt giảm (Option A), tỉ lệ ước lượng — CHƯA đo throughput thật
+
+| Hạng mục | Quy mô gốc | Quy mô cắt | Token ước tính (tỉ lệ) |
+|---|---|---|---|
+| Contextual enrichment | 5.076 chunk (toàn `fastapi`) | ~500 chunk (`fastapi/` lõi) | ~120K |
+| QA eval non-agent | 60 câu × 7 config × 3 lần | 40 câu × 5 config × 2 lần | ~0.13M |
+| QA eval agent (8 call/câu) | 60 câu × 3 lần | 40 câu × 2 lần | ~0.71M |
+| Refactor eval | 20 task × 3 vòng × 3 lần | 20 task × 3 vòng × **2 lần** | ~1.0M |
+| **Tổng** | ~4.7M | | **~1.96M** |
+
+**"Token ước tính (tỉ lệ)" nghĩa là suy tuyến tính từ bảng gốc theo tỉ lệ cắt giảm — không phải số đo thật.** Chưa biết throughput thật của Qwen2.5-7B-AWQ trên L4 (token/giây) vì chưa deploy lần nào. **Bắt buộc:** lần deploy đầu tiên (tài khoản 1, enrichment) phải đo throughput thật trước, rồi mới quyết định có cắt thêm quy mô QA/Refactor eval ở tài khoản 2–4 hay không. Đừng tiêu tài khoản 2 trước khi biết tài khoản 1 tốn bao nhiêu thời gian thật cho bấy nhiêu token.
+
+**Có cache (`diskcache`, key theo prompt_hash) thì chạy lại gần như miễn phí** — nhưng chỉ đúng cho lần chạy *thứ hai trở đi cùng prompt*. Lần đầu vẫn tốn đúng số giờ ở trên.
+
+### Việc cần làm trước khi deploy bất kỳ tài khoản nào
+
+1. Xác nhận cả 4 cặp `MODAL_TOKEN_ID`/`MODAL_TOKEN_SECRET` hợp lệ (hiện chỉ có token_id, thiếu token_secret — xem ghi chú trong `.env`).
+2. `modal token set` + verify từng tài khoản, kiểm tra số dư thật qua dashboard (SDK không có endpoint đọc balance trực tiếp).
+3. Deploy tài khoản 1 trước, đo throughput thật trên một batch nhỏ (~50 chunk) rồi mới quyết định tiếp.
 
 ---
 

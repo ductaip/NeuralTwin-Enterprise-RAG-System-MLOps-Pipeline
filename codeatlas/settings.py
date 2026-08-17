@@ -77,7 +77,21 @@ class Settings(BaseSettings):
     GROQ_BASE_URL: str = "https://api.groq.com/openai/v1"
 
     # Modal + vLLM (eval/ablation — throughput-bound, no rate limit, deterministic)
+    #
+    # Modal auth needs a *pair*: token_id ("ak-...") + token_secret ("as-...").
+    # `MODAL_API_KEY*` below are token_ids only — `modal token set` / the SDK will
+    # reject them without the matching `*_TOKEN_SECRET`. See spec §3.4: 4 accounts,
+    # $1 each, one deploy per account per work-block to avoid burning cold-start time
+    # on redeploys.
     MODAL_API_KEY: str | None = None
+    MODAL_TOKEN_SECRET: str | None = None
+    MODAL_API_KEY_2: str | None = None
+    MODAL_TOKEN_SECRET_2: str | None = None
+    MODAL_API_KEY_3: str | None = None
+    MODAL_TOKEN_SECRET_3: str | None = None
+    MODAL_API_KEY_4: str | None = None
+    MODAL_TOKEN_SECRET_4: str | None = None
+
     MODAL_VLLM_BASE_URL: str | None = None
     """Base URL of the deployed Modal vLLM endpoint. Set after `modal deploy`."""
     MODAL_VLLM_MODEL_ID: str = "Qwen/Qwen2.5-7B-Instruct-AWQ"
