@@ -99,6 +99,11 @@ class Settings(BaseSettings):
     # LLM disk cache, shared by every provider
     LLM_CACHE_DIR: str = ".cache/llm"
 
+    # LangGraph checkpointer (spec §2.3) — sqlite for dev, postgres for prod
+    LANGGRAPH_CHECKPOINT_BACKEND: str = "sqlite"
+    LANGGRAPH_SQLITE_PATH: str = ".cache/langgraph/checkpoints.sqlite"
+    LANGGRAPH_POSTGRES_URI: str | None = None
+
     # --- Optional settings used to tweak the code. ---
 
     # AWS SageMaker
