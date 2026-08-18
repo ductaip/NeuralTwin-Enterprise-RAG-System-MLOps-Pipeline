@@ -35,7 +35,7 @@ Phase 4 là thứ tạo ấn tượng mạnh nhất, nhưng Phase 5 (eval) mới
 
 ---
 
-# ⚠️ Đính chính sau Phase 0/0.5/1 — đọc trước khi vào bất kỳ phase nào
+# ⚠️ Đính chính sau Phase 0/0.5/1/2 — đọc trước khi vào bất kỳ phase nào
 
 Các điều dưới đây làm sai lệch prompt gốc. Prompt các phase sau vẫn giữ nguyên văn để lưu vết, nhưng chỗ nào mâu thuẫn thì mục này thắng.
 
@@ -50,6 +50,9 @@ Phase 0.5 chỉ xoá mock ở `agents/` (bằng cách xoá cả 2 file) và gỡ
 
 **4. `TESTS` không đủ để chọn test — Phase 4 BẮT BUỘC bổ sung `COVERS`.**
 Đo trên `fastapi` ở Phase 1: **81% test node cô lập**, không có quan hệ `TESTS` nào, vì test đi qua ranh giới HTTP (`client.get(...)`) làm chuỗi `CALLS` đứt tại `TestClient` (external). Quan hệ `TESTS` (từ AST) có precision cao nhưng recall thấp với integration test — đúng hướng nguy hiểm mà cả dự án đồng ý tránh (thiếu test → bug lọt production). Phase 4 phải thêm `(:Test)-[:COVERS {hits}]->(:Function)` từ `coverage run --context=test`, **giữ tách khỏi `TESTS`** (không gộp), và đo bảng median/p95/%suite cho cả ba nguồn (TESTS-only / COVERS-only / Union) **trước khi** dùng con số "N thay vì M test" để trình bày. Xem `CODEATLAS_SPEC.md` §2.2 mục "Bốn điều chỉnh" và §3.3 Bảng C; chi tiết đầy đủ ở `docs/PHASE1_RESULTS.md` §5.
+
+**5. "Dùng LangGraph 1.2" (Phase 3 mục đầu) không cài được — dùng 0.4.5, đã verify API thật.**
+`langgraph-sdk` (phụ thuộc bắc cầu của `langgraph>=0.5`, kể cả 1.2) đòi `orjson>=3.11.5`. `zenml[server]==0.74.0` (luật cứng: giữ nguyên ZenML) ghim `orjson>=3.10,<3.11`. Hai ràng buộc không thể cùng thoả — `poetry add langgraph` với bất kỳ version `>=0.5` đều fail resolve. Bản mới nhất cài được cùng ZenML: **`langgraph==0.4.5`** + `langgraph-checkpoint-sqlite==2.0.11` + `langgraph-checkpoint-postgres==2.0.25` + `psycopg[binary]` (psycopg thường cần libpq hệ thống, dùng extra `[binary]` để lấy wheel dựng sẵn). Đã verify import thật: `StateGraph`, `START`/`END`, `add_conditional_edges`, `interrupt`/`Command` (`langgraph.types`), `SqliteSaver`, `PostgresSaver` — đều có ở 0.4.5, không thiếu API nào Phase 3/4 cần. Không nâng version `langgraph` lên khi chưa gỡ được ràng buộc `orjson` của ZenML.
 
 ---
 
