@@ -54,6 +54,9 @@ Phase 0.5 chỉ xoá mock ở `agents/` (bằng cách xoá cả 2 file) và gỡ
 **5. "Dùng LangGraph 1.2" (Phase 3 mục đầu) không cài được — dùng 0.4.5, đã verify API thật.**
 `langgraph-sdk` (phụ thuộc bắc cầu của `langgraph>=0.5`, kể cả 1.2) đòi `orjson>=3.11.5`. `zenml[server]==0.74.0` (luật cứng: giữ nguyên ZenML) ghim `orjson>=3.10,<3.11`. Hai ràng buộc không thể cùng thoả — `poetry add langgraph` với bất kỳ version `>=0.5` đều fail resolve. Bản mới nhất cài được cùng ZenML: **`langgraph==0.4.5`** + `langgraph-checkpoint-sqlite==2.0.11` + `langgraph-checkpoint-postgres==2.0.25` + `psycopg[binary]` (psycopg thường cần libpq hệ thống, dùng extra `[binary]` để lấy wheel dựng sẵn). Đã verify import thật: `StateGraph`, `START`/`END`, `add_conditional_edges`, `interrupt`/`Command` (`langgraph.types`), `SqliteSaver`, `PostgresSaver` — đều có ở 0.4.5, không thiếu API nào Phase 3/4 cần. Không nâng version `langgraph` lên khi chưa gỡ được ràng buộc `orjson` của ZenML.
 
+**6. Groq model `llama-3.3-70b-versatile` (spec §2.6) không còn tồn tại — 404 khi gọi thật.**
+Verify sống ngày 2026-08-18: catalog model của Groq đã đổi, không còn dòng Llama chat nào. Gọi `client.models.list()` để lấy danh sách thật thay vì đoán tên — chọn `openai/gpt-oss-120b` (đã verify gọi thành công). Lưu ý: đây là reasoning model, tốn token vào field `reasoning` ẩn trước khi ra `content` — `max_tokens` thấp (ví dụ 10) có thể bị cắt trước khi có `content`, phải để dư (mặc định `GroqProvider` dùng 1024, đủ). Cập nhật `settings.py`, `.env.example`. **Trước khi dùng bất kỳ model Groq nào ở Phase 4/5, gọi lại `models.list()` để xác nhận còn tồn tại** — đừng tin tên model trong spec/roadmap theo mặc định, catalog Groq đổi không báo trước.
+
 ---
 
 # PHASE 0 — Audit & dọn dẹp
