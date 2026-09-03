@@ -1,0 +1,75 @@
+
+==========================================================================================
+[1] how does jsonable_encoder convert pydantic models to JSON
+==========================================================================================
+
+-- CUSTOM ReAct FAILED: TypeError: codeatlas.agent.trace.AgentTracer.log() got multiple values for keyword argument 'error'
+
+-- LangGraph (1.9s, 5 citations) --
+`jsonable_encoder` receives any Python object (including Pydantic models) and returns a structure that can be safely passed to `json.dumps`.  
+When the object is a Pydantic model it:
+
+* Calls the model’s own encoding logic (field serializers, custom encoders, etc.) by delegating to the internal `jsonable_encoder` implementation, passing through the same options that FastAPI exposes (`include`, `exclude`, `by_alias`, `exclude_unset`, `exclude_defaults`, `exclude_none`, `custom_encoder`, `sqlalche
+
+==========================================================================================
+[2] who calls APIRouter.add_api_route
+==========================================================================================
+
+-- CUSTOM ReAct (3.4s, 6 tool calls) --
+`APIRouter.add_api_route` is called from the following places in the codebase:
+
+| Caller | Location |
+|--------|----------|
+| `APIRouter.api_route` (the decorator defined inside `APIRouter`) | `fastapi/routing.py:3003-3031` |
+| `FastAPI.api_route` (the decorator defined inside `FastAPI`) | `fastapi/applications.py:1330-1357` |
+| `FastAPI.add_api_route` (public wrapper method) | `fastapi/applications.py:1165-1220` |
+
+These are the only callers identified in the repository.
+
+-- LangGraph (1.1s, 5 citations) --
+`APIRouter.add_api_route` is invoked by the `FastAPI.add_api_route` method. Inside `FastAPI.add_api_route`, the implementation delegates to the application's internal router via `self.router.add_api_route(...)` — which is the `APIRouter.add_api_route` call【4†L1165-L1220】.
+
+==========================================================================================
+[3] what does BackgroundTasks.add_task do
+==========================================================================================
+
+-- CUSTOM ReAct (3.2s, 8 tool calls) --
+`BackgroundTasks.add_task` is the method you call to register a function that should be run **after the response is sent**, i.e. in the background.  
+When you invoke it you pass the callable and any positional/keyword arguments it needs; FastAPI stores this information and executes the function once the request handling is finished.  
+
+The tests demonstrate this behavior:
+
+* In `tests/test_response_dependency.py` a background task is added both from a dependency and from the endpoint itself, and
+
+-- LangGraph (2.3s, 5 citations) --
+`BackgroundTasks.add_task` registers a callable to be executed later as a background operation.  
+When you call `background_tasks.add_task(some_func, *args, **kwargs)`, the function `some_func` together with the supplied arguments is stored, and FastAPI runs it after the response is sent. This is demonstrated in the tests:
+
+- The dependency `add_background_task` calls `background_tasks.add_task(background_task, "from dependency")` [tests.test_response_dependency.test_background_tasks_with_depend
+
+==========================================================================================
+[4] where is request body parsing implemented
+==========================================================================================
+[1;35mRetrying request to /chat/completions in 14.000000 seconds[0m
+
+-- CUSTOM ReAct (20.3s, 4 tool calls) --
+** Request body parsing is implemented in the `parse_body` function inside `src/http/request_parser.py` where the raw HTTP payload is read and converted into a structured `Request` object. The code extracts the `Content-Type` header, reads the body stream, and parses JSON or form‑encoded data accordingly【src/http/request_parser.py:45-78】.
+
+-- LangGraph (2.9s, 5 citations) --
+The request body is read and initially parsed in **`fastapi.routing.get_request_handler`** – the handler reads the incoming request, decides whether it is form‑data or JSON, and extracts the raw body (or `await request.form()` for forms)【5†fastapi/routing.py:375-760】.  
+
+After the raw payload is obtained, the actual extraction of the declared body parameters and their validation is performed by **`fastapi.dependencies.utils.request_body_to_args`**. This function receives the raw body (dict, `For
+
+==========================================================================================
+[5] how does FastAPI generate the OpenAPI schema
+==========================================================================================
+[1;35mRetrying request to /chat/completions in 38.000000 seconds[0m
+[1;35mRetrying request to /chat/completions in 52.000000 seconds[0m
+[1;35mRetrying request to /chat/completions in 45.000000 seconds[0m
+[1;35mRetrying request to /chat/completions in 5.000000 seconds[0m
+
+-- CUSTOM ReAct FAILED: TypeError: codeatlas.agent.trace.AgentTracer.log() got multiple values for keyword argument 'error'
+
+-- LangGraph (1171.7s, 5 citations) --
+FastAPI builds the OpenAPI description inside the `FastAPI.openapi` method.  
+When the method is called it first checks whether an OpenAPI schema has already been cached in `self.openapi_schema` **and** whether the routes version has changed (`self._openapi_routes_version`). If the cache is empty or stale, it calls the helper `get_openapi` with all of the application’s metadata (title, version, description, routes, tags, servers, etc.) to create a fresh schema, stores the result in `self.openapi

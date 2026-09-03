@@ -1,0 +1,138 @@
+
+==========================================================================================
+[1] how does jsonable_encoder convert pydantic models to JSON
+==========================================================================================
+[1;35mRetrying request to /chat/completions in 3.000000 seconds[0m
+[1;35mRetrying request to /chat/completions in 9.000000 seconds[0m
+[1;35mRetrying request to /chat/completions in 18.000000 seconds[0m
+
+-- CUSTOM ReAct FAILED: LLMGenerationError: Groq request failed (400): Error code: 400 - {'error': {'message': 'Tool choice is none, but model called a tool', 'type': 'invalid_request_error', 'code': 'tool_use_failed', 'failed_generation': '{"name": "read_source", "arguments": {\n  "file_path": "fastapi/encoders.py",\n  "line_start": 120,\n  "line_end": 260\n}}'}}
+
+-- LangGraph (2.1s, 5 citations) --
+`jsonable_encoder` receives any Python object (including Pydantic models) and returns a structure that can be safely passed to `json.dumps`.  
+When the object is a Pydantic model it:
+
+* Calls the model’s own encoding logic (field serializers, custom encoders, etc.) by delegating to the internal `jsonable_encoder` implementation, passing through the same options that FastAPI exposes (`include`, `exclude`, `by_alias`, `exclude_unset`, `exclude_defaults`, `exclude_none`, `custom_encoder`, `sqlalche
+
+==========================================================================================
+[2] who calls APIRouter.add_api_route
+==========================================================================================
+
+-- CUSTOM ReAct (3.9s, 6 tool calls) --
+`APIRouter.add_api_route` is called from the following places in the codebase:
+
+| Caller | Location |
+|--------|----------|
+| `APIRouter.api_route` (the decorator defined inside `APIRouter`) | `fastapi/routing.py:3003-3031` |
+| `FastAPI.api_route` (the decorator defined inside `FastAPI`) | `fastapi/applications.py:1330-1357` |
+| `FastAPI.add_api_route` (public wrapper method) | `fastapi/applications.py:1165-1220` |
+
+These are the only callers identified in the repository.
+[1;35mRetrying request to /chat/completions in 6.000000 seconds[0m
+[1;35mRetrying request to /chat/completions in 1.000000 seconds[0m
+
+-- LangGraph (13.5s, 5 citations) --
+không tìm thấy trong codebase
+
+==========================================================================================
+[3] what does BackgroundTasks.add_task do
+==========================================================================================
+[1;35mRetrying request to /chat/completions in 1.000000 seconds[0m
+[1;35mRetrying request to /chat/completions in 4.000000 seconds[0m
+[1;35mRetrying request to /chat/completions in 3.000000 seconds[0m
+[1;35mRetrying request to /chat/completions in 3.000000 seconds[0m
+[1;35mRetrying request to /chat/completions in 7.000000 seconds[0m
+[1;35mRetrying request to /chat/completions in 1.000000 seconds[0m
+[1;35mRetrying request to /chat/completions in 6.000000 seconds[0m
+[1;35mRetrying request to /chat/completions in 7.000000 seconds[0m
+[1;35mRetrying request to /chat/completions in 5.000000 seconds[0m
+[1;35mRetrying request to /chat/completions in 7.000000 seconds[0m
+[1;35mRetrying request to /chat/completions in 8.000000 seconds[0m
+[1;35mRetrying request to /chat/completions in 7.000000 seconds[0m
+[1;35mRetrying request to /chat/completions in 9.000000 seconds[0m
+[1;35mRetrying request to /chat/completions in 9.000000 seconds[0m
+[1;35mRetrying request to /chat/completions in 2.000000 seconds[0m
+[1;35mRetrying request to /chat/completions in 12.000000 seconds[0m
+[1;35mRetrying request to /chat/completions in 1.000000 seconds[0m
+[1;35mRetrying request to /chat/completions in 15.000000 seconds[0m
+[1;35mRetrying request to /chat/completions in 13.000000 seconds[0m
+[1;35mRetrying request to /chat/completions in 7.000000 seconds[0m
+[1;35mRetrying request to /chat/completions in 19.000000 seconds[0m
+[1;35mRetrying request to /chat/completions in 19.000000 seconds[0m
+[1;35mRetrying request to /chat/completions in 18.000000 seconds[0m
+[1;35mRetrying request to /chat/completions in 16.000000 seconds[0m
+[1;35mRetrying request to /chat/completions in 16.000000 seconds[0m
+[1;35mRetrying request to /chat/completions in 20.000000 seconds[0m
+[1;35mRetrying request to /chat/completions in 18.000000 seconds[0m
+[1;35mRetrying request to /chat/completions in 16.000000 seconds[0m
+[1;35mRetrying request to /chat/completions in 1.000000 seconds[0m
+[1;35mRetrying request to /chat/completions in 7.000000 seconds[0m
+
+-- CUSTOM ReAct (335.4s, 8 tool calls) --
+`BackgroundTasks.add_task` is the method you call to register a function that should be run **after the response is sent**, i.e. in the background.  
+When you invoke it you pass the callable and any positional/keyword arguments it needs; FastAPI stores this information and executes the function once the request handling is finished.  
+
+The tests demonstrate this behavior:
+
+* In `tests/test_response_dependency.py` a background task is added both from a dependency and from the endpoint itself, and
+[1;35mRetrying request to /chat/completions in 4.000000 seconds[0m
+[1;35mRetrying request to /chat/completions in 3.000000 seconds[0m
+
+-- LangGraph (14.5s, 5 citations) --
+`BackgroundTasks.add_task` registers a callable to be executed later as a background operation.  
+When you call `background_tasks.add_task(some_func, *args, **kwargs)`, the function `some_func` together with the supplied arguments is stored, and FastAPI runs it after the response is sent. This is demonstrated in the tests:
+
+- The dependency `add_background_task` calls `background_tasks.add_task(background_task, "from dependency")` [tests.test_response_dependency.test_background_tasks_with_depend
+
+==========================================================================================
+[4] where is request body parsing implemented
+==========================================================================================
+[1;35mRetrying request to /chat/completions in 3.000000 seconds[0m
+[1;35mRetrying request to /chat/completions in 2.000000 seconds[0m
+[1;35mRetrying request to /chat/completions in 3.000000 seconds[0m
+[1;35mRetrying request to /chat/completions in 8.000000 seconds[0m
+[1;35mRetrying request to /chat/completions in 7.000000 seconds[0m
+[1;35mRetrying request to /chat/completions in 3.000000 seconds[0m
+[1;35mRetrying request to /chat/completions in 6.000000 seconds[0m
+[1;35mRetrying request to /chat/completions in 6.000000 seconds[0m
+[1;35mRetrying request to /chat/completions in 10.000000 seconds[0m
+[1;35mRetrying request to /chat/completions in 8.000000 seconds[0m
+
+-- CUSTOM ReAct FAILED: LLMGenerationError: Groq request failed (400): Error code: 400 - {'error': {'message': 'Tool choice is none, but model called a tool', 'type': 'invalid_request_error', 'code': 'tool_use_failed', 'failed_generation': '{"name": "repo_browser.list_module_structure", "arguments": {"module": ""}}'}}
+[1;35mRetrying request to /chat/completions in 8.000000 seconds[0m
+[1;35mRetrying request to /chat/completions in 40.000000 seconds[0m
+[1;35mRetrying request to /chat/completions in 1.000000 seconds[0m
+
+-- LangGraph (61.2s, 5 citations) --
+The request body is read and initially parsed in **`fastapi.routing.get_request_handler`** – the handler reads the incoming request, decides whether it is form‑data or JSON, and extracts the raw body (or `await request.form()` for forms)【5†fastapi/routing.py:375-760】.  
+
+After the raw payload is obtained, the actual extraction of the declared body parameters and their validation is performed by **`fastapi.dependencies.utils.request_body_to_args`**. This function receives the raw body (dict, `For
+
+==========================================================================================
+[5] how does FastAPI generate the OpenAPI schema
+==========================================================================================
+[1;35mRetrying request to /chat/completions in 2.000000 seconds[0m
+[1;35mRetrying request to /chat/completions in 10.000000 seconds[0m
+[1;35mRetrying request to /chat/completions in 20.000000 seconds[0m
+[1;35mRetrying request to /chat/completions in 17.000000 seconds[0m
+[1;35mRetrying request to /chat/completions in 24.000000 seconds[0m
+[1;35mRetrying request to /chat/completions in 1.000000 seconds[0m
+[1;35mRetrying request to /chat/completions in 29.000000 seconds[0m
+[1;35mRetrying request to /chat/completions in 1.000000 seconds[0m
+[1;35mRetrying request to /chat/completions in 34.000000 seconds[0m
+[1;35mRetrying request to /chat/completions in 1.000000 seconds[0m
+[1;35mRetrying request to /chat/completions in 2.000000 seconds[0m
+[1;35mRetrying request to /chat/completions in 40.000000 seconds[0m
+[1;35mRetrying request to /chat/completions in 1.000000 seconds[0m
+[1;35mRetrying request to /chat/completions in 44.000000 seconds[0m
+[1;35mRetrying request to /chat/completions in 1.000000 seconds[0m
+[1;35mRetrying request to /chat/completions in 44.000000 seconds[0m
+[1;35mRetrying request to /chat/completions in 1.000000 seconds[0m
+[1;35mRetrying request to /chat/completions in 47.000000 seconds[0m
+[1;35mRetrying request to /chat/completions in 1.000000 seconds[0m
+[1;35mRetrying request to /chat/completions in 45.000000 seconds[0m
+
+-- CUSTOM ReAct FAILED: LLMGenerationError: Groq request failed (400): Error code: 400 - {'error': {'message': 'Tool choice is none, but model called a tool', 'type': 'invalid_request_error', 'code': 'tool_use_failed', 'failed_generation': '{"name": "read_source", "arguments": {"file_path":"fastapi/openapi/utils.py","line_start":585,"line_end":720}}'}}
+[1;35mRetrying request to /chat/completions in 7.000000 seconds[0m
+
+-- LangGraph FAILED: LLMGenerationError: Groq request failed (413): Error code: 413 - {'error': {'message': 'Request too large for model `openai/gpt-oss-120b` in organization `org_01ktjv1wqte2ys7fdxpbtg7vwf` service tier `on_demand` on tokens per minute (TPM): Limit 8000, Requested 11838, please reduce your message size and try again. Need more tokens? Upgrade to Dev Tier today at https://console.groq.com/settings/billing', 'type': 'tokens', 'code': 'rate_limit_exceeded'}}
