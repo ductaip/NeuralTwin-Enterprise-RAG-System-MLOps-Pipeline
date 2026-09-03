@@ -14,7 +14,7 @@ in the orchestrator loop, not here, since both orchestrators share this module):
 from __future__ import annotations
 
 import difflib
-from typing import Any, Callable
+from typing import Callable
 
 from codeatlas.application.rag.retriever import ContextRetriever
 from codeatlas.infrastructure.graph.neo4j_adapter import Neo4jAdapter
@@ -146,7 +146,7 @@ class AgentTools:
             f"""
             MATCH {pattern}
             WHERE all(r IN c WHERE r.confidence >= $min_confidence)
-            WITH DISTINCT neighbor, min(length(c)) AS distance
+            WITH DISTINCT neighbor, min(size(c)) AS distance
             RETURN neighbor.qualified_name AS qualified_name, neighbor.signature AS signature,
                    neighbor.file_path AS file_path, neighbor.start_line AS start_line,
                    neighbor.end_line AS end_line, distance
