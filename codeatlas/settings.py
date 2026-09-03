@@ -73,7 +73,11 @@ class Settings(BaseSettings):
     # Groq (live demo — latency-bound, 8 sequential tool calls)
     USE_GROQ: bool = False
     GROQ_API_KEY: str | None = None
-    GROQ_MODEL_ID: str = "llama-3.3-70b-versatile"
+    GROQ_MODEL_ID: str = "openai/gpt-oss-120b"
+    """spec §2.6 named llama-3.3-70b-versatile; Groq's catalog moved on and that model
+    404s now (verified live, 2026-08-18 — see docs/codeatlas_roadmap.md "Đính chính").
+    This is a reasoning model: it spends tokens on a hidden `reasoning` field before
+    `content`, so short `max_tokens` budgets can truncate before any content appears."""
     GROQ_BASE_URL: str = "https://api.groq.com/openai/v1"
 
     # Modal + vLLM (eval/ablation — throughput-bound, no rate limit, deterministic)
