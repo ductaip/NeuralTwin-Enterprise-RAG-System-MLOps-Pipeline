@@ -48,6 +48,63 @@ _STRUCTURAL_RE = re.compile(
     re.IGNORECASE,
 )
 
+# A dotted identifier (`APIRouter.add_api_route`) or a single CamelCase/snake_case
+# token — the actual symbol name inside a structural question, as opposed to the
+# whole sentence around it.
+_DOTTED_IDENTIFIER_RE = re.compile(r"[A-Za-z_][A-Za-z0-9_]*(?:\.[A-Za-z_][A-Za-z0-9_]*)+")
+_BARE_IDENTIFIER_RE = re.compile(r"\b[A-Za-z_][A-Za-z0-9_]*\b")
+
+
+def _extract_symbol_mention(query: str) -> str | None:
+    """Pull the likely symbol name out of a structural question.
+
+    `search_symbol` exact-matches `qualified_name`/`name` — passing it the raw
+    sentence ("who calls APIRouter.add_api_route") never matches anything and falls
+    through to a difflib guess against the whole question, which is nonsense. This
+    is the fix for a live-verified miss: the structural pre-check ran, but on the
+    wrong input.
+    """
+    dotted = _DOTTED_IDENTIFIER_RE.findall(query)
+    if dotted:
+        return max(dotted, key=len)
+
+    stopwords = {"who", "calls", "call", "of", "the", "a", "an", "is", "does", "do", "what"}
+    candidates = [
+        w for w in _BARE_IDENTIFIER_RE.findall(query) if w.lower() not in stopwords and len(w) > 2
+    ]
+    return max(candidates, key=len) if candidates else None
+
+
+def _generate_with_shrinking_context(query: str, chunks: list[RetrievedChunk]) -> str:
+    """Call the LLM with as much context as fits, dropping the lowest-ranked chunk on
+    a "too large" 413 and retrying — live-verified failure mode: 5 reranked chunks can
+    exceed Groq's 8000 TPM ceiling in one request (`openai/gpt-oss-120b`, "Requested
+    11838"). `chunks` is already best-first (post-rerank), so dropping from the tail
+    keeps the strongest evidence.
+    """
+    from codeatlas.application.utils.llm_factory import get_llm
+    from codeatlas.domain.exceptions import LLMGenerationError
+
+    remaining = list(chunks)
+    while remaining:
+        context = format_context(remaining)
+        prompt = (
+            "You are CodeAtlas. Answer the question using ONLY the context below. "
+            "Every claim MUST cite its source as [file.py:12-30]. If the context "
+            "does not support an answer, say \"không tìm thấy trong codebase\" — "
+            "never invent a citation.\n\n"
+            f"Context:\n{context}\n\nQuestion: {query}\n"
+        )
+        try:
+            response = get_llm(temperature=0).invoke(prompt)
+            return response.content if hasattr(response, "content") else str(response)
+        except LLMGenerationError as e:
+            if "too large" not in str(e).lower() and "413" not in str(e):
+                raise
+            remaining = remaining[:-1]
+
+    return "Không tìm thấy trong codebase (ngữ cảnh vượt giới hạn token của model)."
+
 
 def build_qa_graph(repo_id: str, trace_dir: Path = Path(".trace"), run_id: str | None = None):
     tools = AgentTools(repo_id)
@@ -78,12 +135,13 @@ def build_qa_graph(repo_id: str, trace_dir: Path = Path(".trace"), run_id: str |
         round_ = state["tool_budget_used"]
         structural_evidence: list[dict] = []
 
-        if round_ == 0 and _STRUCTURAL_RE.search(state["query"]):
-            symbol_hit = tools.search_symbol(state["query"])
+        mention = _extract_symbol_mention(state["query"])
+        if round_ == 0 and mention and _STRUCTURAL_RE.search(state["query"]):
+            symbol_hit = tools.search_symbol(mention)
             qn = None
-            if "results" in symbol_hit and symbol_hit["results"]:
+            if symbol_hit.get("results"):
                 qn = symbol_hit["results"][0]["qualified_name"]
-            elif "suggestions" in symbol_hit and symbol_hit["suggestions"]:
+            elif symbol_hit.get("suggestions"):
                 qn = symbol_hit["suggestions"][0]
             if qn:
                 impact = tools.impact_analysis(qn)
@@ -126,16 +184,57 @@ def build_qa_graph(repo_id: str, trace_dir: Path = Path(".trace"), run_id: str |
         t0 = time.perf_counter()
         current_round = state["tool_budget_used"] - 1
         by_retriever: dict[str, list[RetrievedChunk]] = {"dense": [], "sparse": [], "graph": []}
+        tool_hits: list[RetrievedChunk] = []
         for item in state["evidence"]:
-            if item.get("stage") == "retrieved" and item.get("round") == current_round and "chunk" in item:
+            if item.get("round") != current_round or item.get("stage") != "retrieved":
+                continue
+            if "chunk" in item:
                 by_retriever[item["source_retriever"]].append(RetrievedChunk(**item["chunk"]))
+            elif item.get("source_retriever") == "tool:impact_analysis":
+                # `plan`'s structural pre-check (get_callers/impact_analysis) — without
+                # this, its findings sat in the trace for citation-history purposes but
+                # never reached ranking. Live-verified miss: "who calls
+                # APIRouter.add_api_route" answered "không tìm thấy trong codebase"
+                # despite the tool call finding the exact right callers.
+                for symbol in item["tool_result"].get("impacted_symbols", [])[:5]:
+                    src = symbol["source"]
+                    read = tools.read_source(src["file_path"], src["start"], src["end"])
+                    if "content" not in read:
+                        continue
+                    tool_hits.append(
+                        RetrievedChunk(
+                            content=read["content"],
+                            qualified_name=symbol["qualified_name"],
+                            file_path=src["file_path"],
+                            start_line=src["start"],
+                            end_line=src["end"],
+                            source="graph",
+                            score=1.0 / (symbol["distance"] + 1),
+                        )
+                    )
 
-        fused = reciprocal_rank_fusion([by_retriever["dense"], by_retriever["sparse"], by_retriever["graph"]])
-        reranked = (
-            reranker.generate(query=Query.from_str(state["query"]), chunks=fused, keep_top_k=FINAL_K)
-            if fused
-            else []
+        fused = reciprocal_rank_fusion(
+            [by_retriever["dense"], by_retriever["sparse"], by_retriever["graph"], tool_hits]
         )
+
+        if tool_hits:
+            # Live-verified twice (Phase 2 retrieval eval, and again here): the
+            # cross-encoder reranker — trained for prose query/passage relevance —
+            # systematically demotes exactly-correct structural hits in favour of test
+            # files whose *names* lexically resemble the query. Reproduced concretely:
+            # RRF correctly ranked `FastAPI.add_api_route` at position 4 of 35 for "who
+            # calls APIRouter.add_api_route", but reranking still dropped every graph
+            # hit for `test_router_include_context.*` matches. `tool_hits` exists only
+            # because the structural-query heuristic already fired, so trust RRF order
+            # here rather than a reranker known to be wrong for this evidence type —
+            # this is the "Hybrid + RRF, không rerank" row in spec §3.3 Bảng A.
+            reranked = fused[:FINAL_K]
+        else:
+            reranked = (
+                reranker.generate(query=Query.from_str(state["query"]), chunks=fused, keep_top_k=FINAL_K)
+                if fused
+                else []
+            )
         _trace("fuse_rerank", elapsed_s=time.perf_counter() - t0, round=current_round, fused=len(fused), final=len(reranked))
         return {
             "evidence": [
@@ -159,18 +258,7 @@ def build_qa_graph(repo_id: str, trace_dir: Path = Path(".trace"), run_id: str |
             answer = "Không tìm thấy trong codebase."
             citations: list[dict] = []
         else:
-            from codeatlas.application.utils.llm_factory import get_llm
-
-            context = format_context(chunks)
-            prompt = (
-                "You are CodeAtlas. Answer the question using ONLY the context below. "
-                "Every claim MUST cite its source as [file.py:12-30]. If the context "
-                "does not support an answer, say \"không tìm thấy trong codebase\" — "
-                "never invent a citation.\n\n"
-                f"Context:\n{context}\n\nQuestion: {state['query']}\n"
-            )
-            response = get_llm(temperature=0).invoke(prompt)
-            answer = response.content if hasattr(response, "content") else str(response)
+            answer = _generate_with_shrinking_context(state["query"], chunks)
             citations = [c.source_ref | {"qualified_name": c.qualified_name} for c in chunks]
 
         _trace("generate", elapsed_s=time.perf_counter() - t0, answer_len=len(answer))
