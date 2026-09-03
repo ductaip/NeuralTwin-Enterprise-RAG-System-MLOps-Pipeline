@@ -24,8 +24,10 @@ app = FastAPI()
 
 # Register the AI Facade router (reasoning-breakdown, etc.)
 from codeatlas.infrastructure.api.facade_controller import router as ai_router  # noqa: E402
+from codeatlas.infrastructure.api.agent_controller import router as agent_router  # noqa: E402
 
 app.include_router(ai_router)
+app.include_router(agent_router)
 
 
 class QueryRequest(BaseModel):
