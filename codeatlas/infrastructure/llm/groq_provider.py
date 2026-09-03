@@ -153,9 +153,18 @@ class GroqProvider:
             except ValueError:
                 pass
 
-        reset = self.last_rate_limit.reset_requests_seconds or self.last_rate_limit.reset_tokens_seconds
-        if reset is not None:
-            return reset
+        # Wait for whichever bucket is closer to refilling, not requests unconditionally.
+        # remaining_requests tends to stay high (deep daily pool) while remaining_tokens
+        # depletes fast in a chatty loop — verified live: reset-tokens ~4-5s vs
+        # reset-requests ~20+ min on the same response. Picking the wrong one means
+        # waiting 20 minutes for a limit that was never actually the problem.
+        candidates = [
+            r
+            for r in (self.last_rate_limit.reset_requests_seconds, self.last_rate_limit.reset_tokens_seconds)
+            if r is not None
+        ]
+        if candidates:
+            return min(candidates)
 
         base = min(2**attempt, 30)
         return base + random.uniform(0, base * 0.25)
