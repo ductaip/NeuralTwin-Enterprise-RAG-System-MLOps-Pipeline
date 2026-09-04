@@ -37,48 +37,17 @@ claim, say "không tìm thấy trong codebase" instead of guessing.>
 
 _ACTION_RE = re.compile(r"Action:\s*(\w+)\s*\nAction Input:\s*(\{.*?\})", re.DOTALL)
 _FINAL_RE = re.compile(r"Final Answer:\s*(.*)", re.DOTALL)
-_CITATION_RE = re.compile(r"\[([\w./\\-]+\.\w+):\d+-\d+\]")
+def _verify_citations(answer: str, evidence: list[dict]) -> tuple[str, float]:
+    """Strip every unverifiable citation and report `citation_validity_rate`.
 
-
-def _known_file_paths(evidence: list[dict]) -> set[str]:
-    """Every `file_path` that appeared in a real tool result, regardless of which
-    tool's shape it came from (`source`, `results[].source`, `callers[].source`, ...)."""
-    paths: set[str] = set()
-
-    def walk(node) -> None:
-        if isinstance(node, dict):
-            fp = node.get("file_path")
-            if isinstance(fp, str):
-                paths.add(fp)
-            for v in node.values():
-                walk(v)
-        elif isinstance(node, list):
-            for v in node:
-                walk(v)
-
-    for item in evidence:
-        walk(item.get("result"))
-    return paths
-
-
-def _flag_unverifiable_citations(answer: str, evidence: list[dict]) -> str:
-    """Hard rule (CLAUDE.md): never present a fabricated citation as legitimate.
-    Live-verified failure: the model cited `src/http/request_parser.py:45-78` — a file
-    that does not exist anywhere in the indexed repo — as if it were real evidence.
-    This is a mechanical last-line check, not a fix for hallucination in general: any
-    `[file.py:N-M]` whose file never appeared in a real tool result gets flagged
-    in-line rather than left to read as a trustworthy source.
+    Hard rule (CLAUDE.md): never present a fabricated citation as legitimate. Removal,
+    not just a warning — a reader who sees a warning still tends to trust the sentence
+    around it. Shared with the Phase 5 metric in `codeatlas.eval.citations`.
     """
-    known = _known_file_paths(evidence)
-    unverifiable = {m for m in _CITATION_RE.findall(answer) if m not in known}
-    if not unverifiable:
-        return answer
-    files = ", ".join(sorted(unverifiable))
-    return (
-        f"{answer}\n\n"
-        f"[CẢNH BÁO: trích dẫn tới {files} không khớp với bất kỳ tool result nào đã "
-        f"thu thập trong phiên này — có thể là bịa đặt, đừng tin mà không kiểm tra lại.]"
-    )
+    from codeatlas.eval.citations import strip_invalid_citations
+
+    cleaned, check = strip_invalid_citations(answer, evidence)
+    return cleaned, check.validity_rate
 
 
 def run_custom_react(
@@ -131,8 +100,13 @@ def run_custom_react(
 
         final = _FINAL_RE.search(text)
         if final:
-            answer = _flag_unverifiable_citations(final.group(1).strip(), evidence)
-            return {"answer": answer, "evidence": evidence, "tool_calls": harness.calls_used}
+            answer, validity = _verify_citations(final.group(1).strip(), evidence)
+            return {
+                "answer": answer,
+                "evidence": evidence,
+                "tool_calls": harness.calls_used,
+                "citation_validity_rate": validity,
+            }
 
         action = _ACTION_RE.search(text)
         if not action:
@@ -182,5 +156,11 @@ def _force_answer(llm, query: str, evidence: list[dict], tool_calls: int) -> dic
     )
     response = llm.invoke(prompt)
     answer = response.content if hasattr(response, "content") else str(response)
-    answer = _flag_unverifiable_citations(answer.strip(), evidence)
-    return {"answer": answer, "evidence": evidence, "tool_calls": tool_calls, "budget_exhausted": True}
+    answer, validity = _verify_citations(answer.strip(), evidence)
+    return {
+        "answer": answer,
+        "evidence": evidence,
+        "tool_calls": tool_calls,
+        "budget_exhausted": True,
+        "citation_validity_rate": validity,
+    }

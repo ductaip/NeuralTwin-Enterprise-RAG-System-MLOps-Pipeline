@@ -81,7 +81,13 @@ Câu "where is request body parsing implemented", Custom ReAct trả lời:
 
 **File và hàm này không tồn tại trong FastAPI.** Model bịa hoàn toàn, vi phạm thẳng luật CLAUDE.md "Không bịa trích dẫn". System prompt đã có câu "If no source supports a claim, say 'không tìm thấy trong codebase'" — không đủ, model vẫn bịa khi tự đánh giá là "đủ bằng chứng" mà không thực sự kiểm chứng.
 
-**Sửa — lớp kiểm tra cơ học, không phải "sửa hallucination nói chung" (bài toán chưa ai giải xong):** sau khi có Final Answer, trích mọi pattern `[file.py:N-M]` bằng regex, đối chiếu với tập `file_path` thật đã xuất hiện trong evidence (quét đệ quy toàn bộ tool result, không phụ thuộc shape từng tool). Trích dẫn không khớp bất kỳ evidence nào → gắn cảnh báo rõ ràng ngay trong câu trả lời thay vì để trôi qua như nguồn đáng tin. 6 test đơn vị, bao gồm case trích dẫn thật lẫn trích dẫn giả trong cùng câu trả lời.
+**Sửa — lớp kiểm tra cơ học, không phải "sửa hallucination nói chung" (bài toán chưa ai giải xong):** sau khi có Final Answer, trích mọi pattern `[file.py:N-M]` (và cả biến thể `【...】` mà model thật sự dùng) bằng regex, đối chiếu với tập source thật đã xuất hiện trong evidence — quét đệ quy toàn bộ tool result, không phụ thuộc shape từng tool.
+
+**Trích dẫn không hợp lệ bị GỠ KHỎI câu trả lời, không chỉ gắn cờ.** Người đọc thấy cảnh báo vẫn có xu hướng tin phần câu chữ xung quanh nó; gỡ hẳn kèm một dòng ghi rõ đã gỡ gì mới thực sự tuân thủ luật "không bịa trích dẫn". Kiểm ở hai mức:
+- **file-level**: file được trích có từng xuất hiện trong evidence không
+- **line-level**: dải dòng có giao với dải dòng thật sự lấy về không (đúng file, sai dòng vẫn là bịa)
+
+Dùng chung giữa cả hai orchestrator và eval harness Phase 5 qua `codeatlas/eval/citations.py`, xuất `citation_validity_rate` — đã thêm vào spec §3.2 làm metric chính thức. 11 test đơn vị. Verify trên chính câu trả lời bịa thật ở trên: `validity_rate = 0.0`, trích dẫn bị gỡ, ghi chú rõ ràng.
 
 **Đây là bằng chứng cụ thể cho lựa chọn kiến trúc ở Phase 3:** LangGraph's `generate` node bị ép chỉ trả lời dựa trên context đã retrieve (constrained), trong khi Custom ReAct tin vào phán đoán "đủ bằng chứng chưa" của chính model — và phán đoán đó có thể sai. Đáng đưa vào Bảng B như một cột định tính, không chỉ số liệu latency/LOC.
 
@@ -122,6 +128,10 @@ Câu "where is request body parsing implemented", Custom ReAct trả lời:
 
 1. **Groq quota cạn thật sau phiên làm việc dài** (327/8000 token còn lại lúc kết thúc phiên) — không chạy thêm live verification hôm nay. Con số Latency ở mục 4 dùng dữ liệu đã thu thập trong phiên, không giả định thêm.
 2. **Custom ReAct thiếu safeguard chống hallucination có hệ thống hơn** — lớp kiểm tra citation hiện tại là cơ học (kiểm tra file_path xuất hiện trong evidence chưa), chưa kiểm tra nội dung câu trả lời có thực sự khớp với evidence hay không. Đủ để bắt bug #8 cụ thể, chưa đủ tổng quát.
-3. **`PostgresSaver` chưa verify chạy thật** (chỉ verify import) — cần một Postgres instance thật để test checkpoint/resume, để dành cho lúc triển khai prod thật hoặc Phase 4.
+3. ~~`PostgresSaver` chưa verify chạy thật~~ → **đã verify sống.** Thêm service `postgres` vào `docker-compose.yml`, chạy `scripts/verify_postgres_checkpoint.py` hai pha ở **hai process tách biệt**:
+   - Process 1: chạy graph, `interrupt_before=["step_c"]` → state dừng ở `['a','b']`, `next=('step_c',)`
+   - Process 2 (process mới hoàn toàn, connection mới): đọc lại từ Postgres được đúng `['a','b']`, `next=('step_c',)`, `invoke(None)` chạy tiếp ra `['a','b','c']`
+
+   Import được không chứng minh resume được — đây mới là bằng chứng. Phase 4's interrupt/human-approval dựa hoàn toàn vào cơ chế này.
 
 Log đầy đủ hai lần chạy 5-câu-hỏi (trước và sau vòng sửa bug) ở `docs/phase3_verification/run1_pre_fix.txt` và `run2_post_fix.txt`. Chạy lại bằng `poetry run python scripts/verify_phase3_agents.py --repo-id fastapi` sau khi index (cần `PYTHONPATH=.` nếu chạy ngoài `poetry run python -m`).

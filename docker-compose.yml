@@ -177,6 +177,24 @@ services:
       - local
     restart: always
 
+  # LangGraph PostgresSaver checkpointer (spec §2.3 — sqlite for dev, postgres for
+  # prod). Phase 4's interrupt/resume depends on this actually persisting state, so it
+  # needs to be runnable locally, not just importable.
+  postgres:
+    image: postgres:16-alpine
+    container_name: "codeatlas_postgres"
+    ports:
+      - "5433:5432"
+    environment:
+      - POSTGRES_USER=codeatlas
+      - POSTGRES_PASSWORD=codeatlas
+      - POSTGRES_DB=codeatlas_checkpoints
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    networks:
+      - local
+    restart: always
+
   rag-api:
     build:
       context: .
@@ -228,6 +246,7 @@ volumes:
   qdrant_data:
   prometheus_data:
   grafana_data:
+  postgres_data:
 
 networks:
   local:

@@ -316,12 +316,25 @@ Cache theo hash chunk để không gọi lại. Chạy trên Modal (batch).
 Retrieval:   Precision@5, Recall@10, MRR, nDCG@10
 Impact:      Exact set match, Jaccard(pred, gold)
 QA E2E:      Faithfulness, Answer correctness (LLM-as-judge, swap order
-             khử position bias, đo Cohen's κ với human trên 20 mẫu)
+             khử position bias, đo Cohen's κ với human trên 20 mẫu),
+             citation_validity_rate  ← xem dưới
 Refactor:    Success rate (test xanh), số vòng repair trung bình,
              test selection precision (chạy đúng test cần chạy),
              % test tiết kiệm được so với chạy full suite
 System:      p50/p95 latency, tokens/query, index time /1k LOC
 ```
+
+### `citation_validity_rate` — metric thêm sau Phase 3, có nguyên nhân cụ thể
+
+**% trích dẫn `[file.py:N-M]` trong câu trả lời trỏ tới file VÀ dải dòng thật sự xuất hiện trong evidence đã thu thập.** Không có bằng chứng chống lưng = bịa.
+
+Lý do thêm: Phase 3 verify sống bắt được custom ReAct loop trả lời "Request body parsing is implemented in `parse_body` inside `src/http/request_parser.py` 【src/http/request_parser.py:45-78】" — **file này không tồn tại ở bất kỳ đâu trong repo đã index**. Prompt đã có sẵn câu "nếu không có nguồn thì nói không tìm thấy" nhưng model vẫn bịa khi tự cho là đã đủ bằng chứng.
+
+Đo hai mức, vì mức thứ hai bắt được kiểu bịa tinh vi hơn:
+- **file-level**: file được trích có từng xuất hiện trong evidence không
+- **line-level**: dải dòng được trích có giao với dải dòng thật sự lấy về không (đúng file, sai dòng vẫn là bịa)
+
+Implement ở `codeatlas/eval/citations.py`, dùng chung giữa runtime (cả hai orchestrator **loại bỏ** trích dẫn không hợp lệ, không chỉ cảnh báo) và eval harness Phase 5. Rất ít hệ RAG đo metric này — nó phòng thủ trực tiếp trước câu hỏi "làm sao biết nó không bịa".
 
 ## 3.3 Ablation — "money table"
 
@@ -340,7 +353,20 @@ System:      p50/p95 latency, tokens/query, index time /1k LOC
 
 **Giả thuyết:** vector-only sập ở Structural/Impact; graph-only sập ở Semantic; chỉ agent routing tốt đều cả ba.
 
-**Hàng "không rerank" thêm sau Phase 2, không phải giả định ban đầu.** Verify 10 câu trên `fastapi` (Phase 2, xem `docs/PHASE2_RESULTS.md` §8) cho thấy cross-encoder rerank **đẩy đáp án đúng ra khỏi top-5** ở câu structural: GraphRetriever tìm đúng `get/post/put/head/options` cho "who calls add_api_route" (confidence 1.0), nhưng rerank thay bằng test file ít liên quan hơn. Nghi ngờ hợp lý: cross-encoder được train trên cặp query-passage văn xuôi, không có tín hiệu để đánh giá đúng structural match. Nếu đúng, "+ Cross-encoder rerank" sẽ **giảm** điểm Structural so với "Hybrid + RRF, không rerank" — một kết quả âm thật, không phải placeholder.
+### Giả thuyết rerank — không còn là nghi ngờ, đã tái hiện độc lập 2 lần
+
+**Dự đoán cụ thể, đo được:** cross-encoder rerank **giúp ở Semantic** và **hại ở Structural**. Cặp hàng `Hybrid + RRF, không rerank` vs `+ Cross-encoder rerank` tồn tại chính để đo dấu của hiệu ứng này theo từng nhóm câu hỏi — nếu chỉ nhìn cột Overall thì hai hiệu ứng ngược dấu triệt tiêu nhau và finding biến mất.
+
+Bằng chứng đã có, từ hai nguồn độc lập:
+
+| Nguồn | Quan sát |
+|---|---|
+| Phase 2, verify 10 câu (`PHASE2_RESULTS.md` §8) | `serialize_response` đúng ở dense #4 nhưng bị rerank đẩy khỏi top-5; câu "who calls add_api_route" graph tìm đúng `get/post/put/head/options` (confidence 1.0), rerank thay bằng test file |
+| Phase 3, spy trực tiếp input/output `reciprocal_rank_fusion()` (`PHASE3_RESULTS.md` §3, bug #7) | RRF xếp đúng `FastAPI.add_api_route` ở hạng 4/35 — reranker loại sạch, giữ lại 5 file test trùng tên bề mặt |
+
+**Cơ chế giải thích:** cross-encoder (`ms-marco-MiniLM`) được train trên cặp query–passage văn xuôi. Câu structural ("ai gọi hàm X") cần tín hiệu quan hệ đồ thị, không có trong bề mặt văn bản — nên model chấm cao cho đoạn text *nói về* việc gọi hàm (file test có tên `..._is_called_after_inclusion`) thay vì đoạn code *thực sự gọi* hàm đó.
+
+**Đã hành động ở Phase 3:** khi có structural evidence từ tool (`impact_analysis`), LangGraph bỏ qua rerank và dùng thẳng thứ tự RRF. Phase 5 phải đo xem quyết định này đúng ở mức nào, và ở nhóm Semantic thì rerank có thật sự giúp không.
 
 ### Bảng B — Orchestration (đây là bảng biện minh cho LangGraph)
 
@@ -395,11 +421,46 @@ Ba cột graph-selected tách theo nguồn quan hệ, không gộp làm một �
 
 **Có cache (`diskcache`, key theo prompt_hash) thì chạy lại gần như miễn phí** — nhưng chỉ đúng cho lần chạy *thứ hai trở đi cùng prompt*. Lần đầu vẫn tốn đúng số giờ ở trên.
 
+### Đo thật ngày 2026-09-03 — rate card lấy từ chính API Modal
+
+Auth thành công cả 4 tài khoản (mỗi tài khoản chạy trong **process riêng** — `modal` cache client singleton nên đổi env var giữa chừng trong cùng process không có tác dụng, lần đo đầu bị sai vì lý do này).
+
+| Tài khoản | Workspace | billed | credits applied |
+|---|---|---|---|
+| 1 | `taipd3494` | $0 | $0 |
+| 2 | `ductaigemini2005` | $0 | $0 |
+| 3 | `ductaicool` | $0 | $0 |
+| 4 | `dtai858` | $0 | $0 |
+
+**4 workspace thật sự khác nhau** → đúng là 4 ngân sách riêng, không cộng dồn được. `Credits` = $0 ở cả bốn, nhưng đây là *credit đã áp trong chu kỳ này* (chưa có usage tính phí nên chưa có gì để áp) — **không kết luận được** có free tier định kỳ hay không từ API này; phải xem dashboard billing.
+
+**Rate card thật (`ws.billing.rates()`):** L4 **$0.80/giờ** — đúng như giả định. Nhưng có hai điều rate card làm lộ ra mà kế hoạch cũ bỏ sót:
+
+**1. GPU không phải toàn bộ chi phí.** CPU $0.0473/core/giờ + RAM $0.008/GiB/giờ tính **thêm** trên GPU. Container vLLM điển hình (4–8 core, 16–32 GiB) cộng thêm ~$0.32–0.63/giờ → thực tế **~$1.12–1.43/giờ**, không phải $0.80. **$1/tài khoản mua được ~40–55 phút, không phải 75 phút.**
+
+**2. Modal có serverless LLM tính theo token — có thể xoá sạch bài toán ngân sách này.**
+
+| Model | Prompt | Prompt (cached) | Completion |
+|---|---|---|---|
+| `zai-org/GLM-5.3-Flash` | $0.45/MTok | $0.09/MTok | $1.50/MTok |
+| `zai-org/GLM-5.3` | $1.40/MTok | $0.26/MTok | $4.40/MTok |
+| `Qwen/Qwen3.8-2.4T-A95B` | $2.00/MTok | $0.25/MTok | $6.00/MTok |
+
+Với GLM-5.3-Flash và ~1.96M token (quy mô đã cắt ở trên, giả định 70% prompt / 30% completion): **≈ $1.50 cho toàn bộ eval**. Kể cả kế hoạch gốc 4.7M token cũng chỉ ≈ **$3.58**.
+
+So với tự host vLLM trên L4, serverless token loại bỏ luôn: cold start 3–5 phút mỗi lần đổi tài khoản, rủi ro container quên tắt qua đêm đốt sạch một key, và cả việc phải chia workload thủ công giữa 4 tài khoản.
+
+**Đánh đổi phải cân nhắc trước khi đổi hướng:**
+- Danh sách model serverless **không có** Qwen2.5-7B-AWQ mà spec §2.6 chọn. Đổi model = đổi một biến trong toàn bộ eval.
+- Reproducibility: spec yêu cầu `temperature=0` + seed cố định + median of 3 runs. **Chưa verify** endpoint serverless có nhận `seed` không — phải kiểm trước khi cam kết.
+- Prompt caching ($0.09/MTok với GLM-5.3-Flash) làm lần chạy lại rẻ gần như bằng 0, nhưng cache là của Modal, không kiểm soát được như `diskcache` local.
+
 ### Việc cần làm trước khi deploy bất kỳ tài khoản nào
 
-1. Xác nhận cả 4 cặp `MODAL_TOKEN_ID`/`MODAL_TOKEN_SECRET` hợp lệ (hiện chỉ có token_id, thiếu token_secret — xem ghi chú trong `.env`).
-2. `modal token set` + verify từng tài khoản, kiểm tra số dư thật qua dashboard (SDK không có endpoint đọc balance trực tiếp).
-3. Deploy tài khoản 1 trước, đo throughput thật trên một batch nhỏ (~50 chunk) rồi mới quyết định tiếp.
+1. ~~Xác nhận cả 4 cặp token~~ → **xong**, cả 4 auth thật thành công.
+2. Xem dashboard billing để biết có free tier định kỳ không (API không trả lời được câu này).
+3. **Quyết hướng trước:** serverless token (rẻ hơn nhiều, mất kiểm soát model/seed) vs tự host vLLM trên L4 (đúng spec, ~40–55 phút/tài khoản). Nếu chọn serverless: verify `seed` support trước.
+4. Nếu vẫn tự host: deploy tài khoản 1 trước, đo throughput thật trên ~50 chunk, **đặt hard timeout + auto-shutdown** cho app (container quên tắt = mất sạch một key).
 
 ---
 

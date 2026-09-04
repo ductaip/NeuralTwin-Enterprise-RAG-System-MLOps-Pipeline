@@ -75,6 +75,17 @@ def _extract_symbol_mention(query: str) -> str | None:
     return max(candidates, key=len) if candidates else None
 
 
+def _verify_citations_against_chunks(
+    answer: str, chunks: list[RetrievedChunk]
+) -> tuple[str, float]:
+    """Strip unverifiable citations, using the reranked chunks as the evidence set."""
+    from codeatlas.eval.citations import strip_invalid_citations
+
+    evidence = [{"result": {"source": c.source_ref}} for c in chunks]
+    cleaned, check = strip_invalid_citations(answer, evidence)
+    return cleaned, check.validity_rate
+
+
 def _generate_with_shrinking_context(query: str, chunks: list[RetrievedChunk]) -> str:
     """Call the LLM with as much context as fits, dropping the lowest-ranked chunk on
     a "too large" 413 and retrying — live-verified failure mode: 5 reranked chunks can
@@ -260,6 +271,10 @@ def build_qa_graph(repo_id: str, trace_dir: Path = Path(".trace"), run_id: str |
         else:
             answer = _generate_with_shrinking_context(state["query"], chunks)
             citations = [c.source_ref | {"qualified_name": c.qualified_name} for c in chunks]
+            # Same guard as the ReAct loop: a citation not backed by a retrieved chunk
+            # is removed, not merely flagged (CLAUDE.md — never present a fabricated
+            # citation as legitimate). The evidence here is the reranked chunk list.
+            answer, _validity = _verify_citations_against_chunks(answer, chunks)
 
         _trace("generate", elapsed_s=time.perf_counter() - t0, answer_len=len(answer))
         return {"answer": answer.strip(), "citations": citations}
