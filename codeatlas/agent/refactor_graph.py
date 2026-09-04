@@ -59,7 +59,7 @@ def add_refactor_nodes(graph: StateGraph, tools: AgentTools, tracer: AgentTracer
             if qn:
                 impact = tools.impact_analysis(qn)
                 impacted_symbols = [s["qualified_name"] for s in impact.get("impacted_symbols", [])]
-                affected_tests = [t["file_path"] for t in impact.get("affected_tests", [])]
+                affected_tests = [t["file_path"] for t in impact.get("affected_tests_source", []) if "file_path" in t]
         
         _trace("impact_analysis", elapsed_s=time.perf_counter() - t0, tests=len(affected_tests))
         return {"impacted_symbols": impacted_symbols, "affected_tests": affected_tests}
@@ -80,10 +80,13 @@ def add_refactor_nodes(graph: StateGraph, tools: AgentTools, tracer: AgentTracer
         _trace("generate_patch", elapsed_s=time.perf_counter() - t0, patch_len=len(patch_text))
         return {"patch": patch_text}
 
+    def _get_sandbox_dir() -> Path:
+        return Path(getattr(settings, "SANDBOX_REPO_PATH", "/tmp/fastapi_codeatlas"))
+
     def sandbox_apply(state: AtlasState) -> dict:
         t0 = time.perf_counter()
         patch = state["patch"]
-        sandbox_dir = Path("/tmp/fastapi_codeatlas")
+        sandbox_dir = _get_sandbox_dir()
         if sandbox_dir.exists() and patch:
             patch_file = sandbox_dir / f"patch_{uuid.uuid4().hex[:8]}.diff"
             patch_file.write_text(patch)
@@ -94,7 +97,7 @@ def add_refactor_nodes(graph: StateGraph, tools: AgentTools, tracer: AgentTracer
 
     def run_tests(state: AtlasState) -> dict:
         t0 = time.perf_counter()
-        sandbox_dir = Path("/tmp/fastapi_codeatlas")
+        sandbox_dir = _get_sandbox_dir()
         if not sandbox_dir.exists():
             return {"test_output": "Sandbox not found.", "repair_iteration": state["repair_iteration"]}
             
@@ -102,7 +105,12 @@ def add_refactor_nodes(graph: StateGraph, tools: AgentTools, tracer: AgentTracer
         if not tests_to_run:
             tests_to_run = ["tests/"]
             
-        cmd = ["pytest"] + tests_to_run
+        # Locate pytest binary in sandbox venv or system
+        pytest_bin = str(sandbox_dir / ".venv" / "bin" / "pytest")
+        if not os.path.exists(pytest_bin):
+            pytest_bin = "pytest"
+
+        cmd = [pytest_bin] + tests_to_run
         result = subprocess.run(cmd, cwd=str(sandbox_dir), capture_output=True, text=True)
         
         _trace("run_tests", elapsed_s=time.perf_counter() - t0, success=(result.returncode == 0))
@@ -124,7 +132,7 @@ def add_refactor_nodes(graph: StateGraph, tools: AgentTools, tracer: AgentTracer
         return {}
 
     def commit(state: AtlasState) -> dict:
-        sandbox_dir = Path("/tmp/fastapi_codeatlas")
+        sandbox_dir = _get_sandbox_dir()
         if sandbox_dir.exists():
             subprocess.run(["git", "commit", "-am", f"Refactor: {state['query']}"], cwd=str(sandbox_dir))
         return {"answer": "Refactor applied and committed.", "citations": []}
