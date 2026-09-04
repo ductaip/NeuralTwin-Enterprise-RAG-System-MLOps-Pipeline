@@ -51,22 +51,26 @@ def ingest_coverage(repo_id: str, coverage_json: Path, adapter: Neo4jAdapter):
     
     # Coverage contexts usually look like: `test_fastapi.py::test_get_item`
     # or `tests/test_fastapi.py::test_get_item`.
-    # We map (file_path, test_name) -> test_qn
+    # BUT with dynamic_context=test_function, format is DOTTED:
+    #   `tests.test_application.test_redoc`
+    # We map both formats.
     test_lookup = {}
+    test_lookup_by_qn = {}  # direct qn match for dotted format
     for row in tests_data:
-        # A test file_path might be "tests/test_fastapi.py", name "test_get_item"
-        # We also store just the basename to be resilient
         file_path = row["file_path"]
         basename = Path(file_path).name
         name = row["name"]
-        test_lookup[(file_path, name)] = row["qn"]
-        test_lookup[(basename, name)] = row["qn"]
+        qn = row["qn"]
+        test_lookup[(file_path, name)] = qn
+        test_lookup[(basename, name)] = qn
+        test_lookup_by_qn[qn] = qn
+        # Also store by just the test function name for fuzzy match
+        test_lookup[("", name)] = qn
 
     covers_hits = defaultdict(int)
+    unmatched_contexts = set()
 
     logger.info("Parsing coverage data...")
-    # coverage json with --show-contexts looks like:
-    # "files": { "fastapi/routing.py": { "contexts": { "123": ["tests/test_routing.py::test_route"] } } }
     for file_path, file_data in cov_data.get("files", {}).items():
         if "contexts" not in file_data:
             continue
@@ -94,26 +98,42 @@ def ingest_coverage(repo_id: str, coverage_json: Path, adapter: Neo4jAdapter):
                 continue
                 
             for ctx in contexts:
-                # context format: `path/to/test.py::test_name` 
-                # or `path/to/test.py::test_name[param1]`
-                if "::" not in ctx:
+                if not ctx:  # empty string = module-level execution, skip
                     continue
-                    
-                parts = ctx.split("::")
-                test_file = parts[0]
-                test_name = parts[-1].split("[")[0] # remove parametrization if present
-                
-                # Try to map context to test_qn
-                test_qn = test_lookup.get((test_file, test_name))
-                if not test_qn:
-                    test_basename = Path(test_file).name
-                    test_qn = test_lookup.get((test_basename, test_name))
-                
+
+                test_qn = None
+
+                # Format 1: dotted module path from dynamic_context=test_function
+                #   e.g. "tests.test_application.test_redoc"
+                if "::" not in ctx:
+                    # Direct match against qualified_name
+                    test_qn = test_lookup_by_qn.get(ctx)
+                    if not test_qn:
+                        # Try matching just the last component (function name)
+                        test_name = ctx.rsplit(".", 1)[-1]
+                        test_qn = test_lookup.get(("", test_name))
+                else:
+                    # Format 2: pytest-style "path/to/test.py::test_name[param]"
+                    parts = ctx.split("::")
+                    test_file = parts[0]
+                    test_name = parts[-1].split("[")[0]  # strip parametrize
+                    test_qn = test_lookup.get((test_file, test_name))
+                    if not test_qn:
+                        test_basename = Path(test_file).name
+                        test_qn = test_lookup.get((test_basename, test_name))
+
                 if test_qn:
                     covers_hits[(test_qn, func_qn)] += 1
+                else:
+                    unmatched_contexts.add(ctx)
+
+    if unmatched_contexts:
+        logger.warning(f"Could not match {len(unmatched_contexts)} unique test contexts to DB nodes. "
+                       f"Samples: {list(unmatched_contexts)[:5]}")
 
     if not covers_hits:
-        logger.warning("No COVERS relationships found. Ensure coverage.json was generated with --show-contexts.")
+        logger.warning("No COVERS relationships found. Ensure coverage.json was generated with "
+                       "dynamic_context=test_function and --show-contexts.")
         return
 
     logger.info(f"Inserting {len(covers_hits)} COVERS relationships...")
