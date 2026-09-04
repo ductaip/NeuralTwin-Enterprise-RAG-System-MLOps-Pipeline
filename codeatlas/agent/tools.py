@@ -197,12 +197,15 @@ class AgentTools:
             """,
             params,
         )
-        # Cypher [3]: affected tests, TESTS only in Phase 3 — COVERS lands in Phase 4.
+        # Cypher [3']: affected tests, TESTS and COVERS in Phase 4.
+        # Include min_hits for COVERS from settings.
+        params["min_hits"] = getattr(settings, "COVERS_MIN_HITS", 1)
         test_rows = self.adapter.execute_read(
             """
-            MATCH (t:Test {repo_id: $repo_id})-[:TESTS]->(impacted:Function)-[c:CALLS*0..3]->
+            MATCH (t:Test {repo_id: $repo_id})-[r:TESTS|COVERS]->(impacted:Function)-[c:CALLS*0..3]->
                   (f:Function {repo_id: $repo_id, qualified_name: $qn})
-            WHERE all(r IN c WHERE r.confidence >= $min_confidence)
+            WHERE all(edge IN c WHERE edge.confidence >= $min_confidence)
+              AND (type(r) = 'TESTS' OR r.hits >= $min_hits)
             RETURN DISTINCT t.qualified_name AS qualified_name, t.file_path AS file_path
             LIMIT 200
             """,

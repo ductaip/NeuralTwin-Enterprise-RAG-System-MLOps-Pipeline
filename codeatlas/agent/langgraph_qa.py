@@ -37,6 +37,7 @@ from codeatlas.application.rag.reranking import Reranker
 from codeatlas.application.rag.rrf import reciprocal_rank_fusion
 from codeatlas.application.rag.sparse_retriever import SparseCodeRetriever
 from codeatlas.domain.queries import Query
+from codeatlas.agent.refactor_graph import add_refactor_nodes
 
 MAX_RETRIEVAL_ROUNDS = 2
 FETCH_K = 15
@@ -136,10 +137,7 @@ def build_qa_graph(repo_id: str, trace_dir: Path = Path(".trace"), run_id: str |
         return {}
 
     def route_by_mode(state: AtlasState) -> str:
-        return "planning" if state["mode"] == "qa" else "refactor_not_implemented"
-
-    def refactor_not_implemented(state: AtlasState) -> dict:
-        return {"answer": "Mode refactor chưa implement — xem CodeAtlas roadmap Phase 4."}
+        return "planning" if state["mode"] == "qa" else "impact_analysis"
 
     def plan(state: AtlasState) -> dict:
         t0 = time.perf_counter()
@@ -290,11 +288,12 @@ def build_qa_graph(repo_id: str, trace_dir: Path = Path(".trace"), run_id: str |
     graph.add_node("retrieve_graph", retrieve_graph)
     graph.add_node("fuse_rerank", fuse_rerank)
     graph.add_node("generate", generate)
-    graph.add_node("refactor_not_implemented", refactor_not_implemented)
+    
+    # Phase 4 Refactor nodes
+    add_refactor_nodes(graph, tools, tracer)
 
     graph.add_edge(START, "router")
-    graph.add_conditional_edges("router", route_by_mode, {"planning": "planning", "refactor_not_implemented": "refactor_not_implemented"})
-    graph.add_edge("refactor_not_implemented", END)
+    graph.add_conditional_edges("router", route_by_mode, {"planning": "planning", "impact_analysis": "impact_analysis"})
     graph.add_edge("planning", "retrieve_dense")
     graph.add_edge("planning", "retrieve_sparse")
     graph.add_edge("planning", "retrieve_graph")

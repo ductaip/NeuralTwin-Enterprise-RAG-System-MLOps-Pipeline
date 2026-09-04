@@ -50,6 +50,8 @@ class Settings(BaseSettings):
     CALL_EDGE_MIN_CONFIDENCE_IMPACT: float = 0.5
     # Ngưỡng cao cho phân tích cấu trúc (fan-in, dead code) — ở đó nhiễu mới là cái hại.
     CALL_EDGE_MIN_CONFIDENCE_STRUCTURAL: float = 0.9
+n    # Min hits for COVERS relationship to be considered in impact analysis
+    COVERS_MIN_HITS: int = 1
 
     # Qdrant vector database
     USE_QDRANT_CLOUD: bool = False
