@@ -53,7 +53,7 @@ class Settings(BaseSettings):
     # Min hits for COVERS relationship to be considered in impact analysis
     COVERS_MIN_HITS: int = 1
     # Path to local repository clone used as sandbox for closed-loop refactoring
-    SANDBOX_REPO_PATH: str = "/tmp/fastapi_codeatlas"
+    SANDBOX_REPO_PATH: str = "/home/adminn/.cache/codeatlas-eval/fastapi"
 
     # Qdrant vector database
     USE_QDRANT_CLOUD: bool = False
