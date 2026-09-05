@@ -118,7 +118,7 @@ def add_refactor_nodes(graph: StateGraph, tools: AgentTools, tracer: AgentTracer
 
     def check_tests(state: AtlasState) -> str:
         output = state["test_output"] or ""
-        if "FAILED" in output or "failed" in output.lower():
+        if "FAILED" in output or "failed" in output.lower() or "error" in output.lower() or "module" in output.lower():
             if state["repair_iteration"] >= 3:
                 return "end"
             return "repair"
